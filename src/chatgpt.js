@@ -49,6 +49,7 @@ export class ChatGPT {
     const result = await page.evaluate(async () => {
       const response = await fetch("/api/auth/session", {
         credentials: "include",
+        signal: AbortSignal.timeout(30000),
       });
       if (!response.ok) return null;
       const session = await response.json();
@@ -70,12 +71,14 @@ export class ChatGPT {
       async ({ endpoint, method, body }) => {
         const sessionResponse = await fetch("/api/auth/session", {
           credentials: "include",
+          signal: AbortSignal.timeout(30000),
         });
         const session = await sessionResponse.json();
         if (!session.accessToken) return { status: 401 };
         const response = await fetch(endpoint, {
           method,
           credentials: "include",
+          signal: AbortSignal.timeout(30000),
           headers: {
             authorization: `Bearer ${session.accessToken}`,
             "content-type": "application/json",

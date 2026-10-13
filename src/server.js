@@ -237,8 +237,11 @@ export async function startServer() {
   const chatgpt = new ChatGPT(directory, { browser });
   let application;
   const cleanup = async () => {
-    await chatgpt.close();
-    await unlink(lock).catch(() => {});
+    try {
+      await chatgpt.close();
+    } finally {
+      await unlink(lock).catch(() => {});
+    }
   };
   try {
     await store.load();
@@ -259,9 +262,17 @@ export async function startServer() {
     if (stopping) return;
     stopping = true;
     application.migration.pause();
-    await application.migration.task;
-    await cleanup();
-    application.server.close();
+    try {
+      await application.migration.task;
+    } catch (error) {
+      console.error(`ChatPort stopped: ${error.message}`);
+    } finally {
+      try {
+        await cleanup();
+      } finally {
+        application.server.close();
+      }
+    }
   };
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
