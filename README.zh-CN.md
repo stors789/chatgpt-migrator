@@ -12,7 +12,7 @@ _截图使用虚构数据。这是社区工具，与 OpenAI 无隶属关系。_
 
 ## 安装
 
-1. 从 [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest) 下载 `chatport-extension-v0.2.1.zip`，解压到准备长期保留的文件夹。
+1. 从 [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest) 下载 `chatport-extension-v0.2.2.zip`，解压到准备长期保留的文件夹。
 2. 在 Chrome 打开 `chrome://extensions`，开启右上角「开发者模式」，点击「加载已解压的扩展程序」，选中包含 `manifest.json` 的解压文件夹。
 3. 进入 ChatPort 的「详情」，开启「允许在无痕模式下运行」。扩展需要用它访问新账号，同时保持两个账号的登录相互隔离。
 4. 在 Chrome 的扩展菜单中固定 ChatPort，点击扩展图标即可打开工作台。

@@ -12,7 +12,7 @@ _The screenshot uses synthetic accounts and conversations. This is an unofficial
 
 ## Install
 
-1. Download `chatport-extension-v0.2.1.zip` from [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest), then unzip it into a permanent folder.
+1. Download `chatport-extension-v0.2.2.zip` from [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest), then unzip it into a permanent folder.
 2. Open `chrome://extensions` in Chrome, enable **Developer mode**, click **Load unpacked**, and select the unzipped folder containing `manifest.json`.
 3. Open ChatPort's **Details** and enable **Allow in incognito**. This lets the extension operate the destination account while keeping its login session separate.
 4. Pin ChatPort in Chrome's extension menu and click its icon to open the workspace.

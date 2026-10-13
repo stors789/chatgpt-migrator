@@ -7,7 +7,7 @@ import https from "node:https";
 import { execFileSync } from "node:child_process";
 import { conversation, append } from "../fixtures.js";
 
-export async function fixture({ incognito = true } = {}) {
+export async function fixture({ incognito = true, composer = "legacy" } = {}) {
   const directory = await mkdtemp(path.join(tmpdir(), "chatport-extension-"));
   const key = path.join(directory, "key.pem");
   const cert = path.join(directory, "cert.pem");
@@ -114,15 +114,13 @@ export async function fixture({ incognito = true } = {}) {
         );
         const offset = Number(url.searchParams.get("offset") || 0);
         return json({
-          items: entries
-            .slice(offset, offset + 100)
-            .map((item) => ({
-              id: item.conversation_id,
-              title: item.title,
-              create_time: item.create_time,
-              update_time: item.update_time,
-              gizmo_id: item.gizmo_id,
-            })),
+          items: entries.slice(offset, offset + 100).map((item) => ({
+            id: item.conversation_id,
+            title: item.title,
+            create_time: item.create_time,
+            update_time: item.update_time,
+            gizmo_id: item.gizmo_id,
+          })),
           total: entries.length,
         });
       }
@@ -181,9 +179,19 @@ export async function fixture({ incognito = true } = {}) {
       }
       if (url.pathname.startsWith("/share/")) {
         const shareId = url.pathname.split("/").at(-1);
-        return html(
-          `<!doctype html><html><body><p>Synthetic shared conversation</p><div id="prompt-textarea" contenteditable="true" role="textbox"></div><button data-testid="send-button" aria-label="Send prompt">Send</button><script>document.querySelector('button').onclick=async()=>{const response=await fetch('/backend-api/conversation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({shareId:${JSON.stringify(shareId)},message:document.querySelector('#prompt-textarea').innerText})});const data=await response.json();history.replaceState({},'', '/c/'+data.id);};</script></body></html>`,
-        );
+        const editor =
+          composer === "current"
+            ? '<form><div contenteditable="true" role="textbox" aria-label="询问 ChatGPT"></div><button type="button" aria-label="添加文件等内容">Add file</button><button type="submit" aria-label="发送">Send</button></form>'
+            : '<div id="prompt-textarea" contenteditable="true" role="textbox"></div><button data-testid="send-button" aria-label="Send prompt">Send</button>';
+        const otherForm =
+          '<form id="unrelated"><div contenteditable="true" role="textbox" aria-label="Hidden search" style="display:none"></div><button type="submit">Search</button></form>';
+        return html(`<!doctype html><html><body><p>Synthetic shared conversation</p>${otherForm}${editor}<script>
+        const box = document.querySelector('[aria-label="询问 ChatGPT"], #prompt-textarea');
+        const submit = async (event) => {event.preventDefault(); const response=await fetch('/backend-api/conversation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({shareId:${JSON.stringify(shareId)},message:box.innerText})}); const data=await response.json(); history.replaceState({},'', '/c/'+data.id);};
+        if(box.closest('form')) box.closest('form').onsubmit=submit;
+        else document.querySelector('[data-testid="send-button"]').onclick=submit;
+        document.querySelector('#unrelated').onsubmit=(event)=>{event.preventDefault();document.body.dataset.wrongSubmit='true';};
+        </script></body></html>`);
       }
       return html(
         "<!doctype html><html><body>Synthetic personal account</body></html>",

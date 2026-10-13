@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 — 2026-10-13
+
+Fix receiving on the current ChatGPT interface, whose editable message box has no `prompt-textarea` ID and whose send control is a form submit button. Inspect only visible editable boxes and submit inside the chosen editor's form. Keep the existing editor support, verification rules and uncertain-attempt records. Conversation catalog loading is unchanged.
+
+Validation: read the live ChatGPT editor attributes and briefly filled/cleared a synthetic draft without sending. 39 unit tests and 7 actual-extension synthetic browser workflows pass, including a no-ID editor, localized submit button and unrelated form. A real two-account receiving test still requires the user's account interaction.
+
 ## 0.2.1 — 2026-10-13
 
 Keep unchanged conversation rows and project options in place during progress polling. This preserves checkbox interaction and open project choices; the previous unconditional replacement interrupted selection on the Linux CI browser while its window was inactive.

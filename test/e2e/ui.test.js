@@ -328,3 +328,25 @@ test("unchanged progress polling preserves row controls and project options", as
     .check();
   assert.equal(await page.locator("#selected-count").innerText(), "1");
 });
+
+// DOM attributes observed on the live ChatGPT composer; no real chat data is used.
+test("current ChatGPT editor without prompt-textarea ID submits only its own form and verifies the saved copy", async (t) => {
+  const app = await fixture({ composer: "current" });
+  t.after(() => app.close());
+  const page = await pageFor(app);
+  await page
+    .getByRole("checkbox", { name: "A weekend in Kyoto", exact: true })
+    .check();
+  await page.locator("#sharing-confirm").check();
+  await page.locator("#start").click();
+  await until(async () => (await app.jobs())[0]?.status === "verified", 20000);
+  assert.equal(app.sent, 1);
+  const copy = app.target.values().next().value;
+  const markers = Object.values(copy.mapping).filter(
+    (node) =>
+      node.message?.author.role === "user" &&
+      node.message.content.parts[0].includes("[ChatPort:"),
+  );
+  assert.equal(markers.length, 1);
+  assert.equal((await app.jobs())[0].proof.count, 2);
+});

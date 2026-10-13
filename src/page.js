@@ -1,5 +1,8 @@
 // These functions run only in the bound ChatGPT tab's isolated script world.
 // Authentication tokens stay inside that tab; only identity or response data returns.
+export const COMPOSER_SELECTOR =
+  '#prompt-textarea, form [contenteditable="true"][role="textbox"]';
+
 export async function browserRequest({
   identity,
   endpoint,
@@ -43,13 +46,19 @@ export async function browserRequest({
   }
 }
 
-export async function prepareComposer() {
+export async function prepareComposer(selector) {
   const deadline = Date.now() + 30000;
   let continued = false;
   for (;;) {
-    const composer = document.querySelector("#prompt-textarea");
-    if (composer && composer.getClientRects().length)
-      return { url: location.href };
+    const editors = [...document.querySelectorAll(selector)].filter(
+      (editor) => editor.isContentEditable && editor.getClientRects().length,
+    );
+    if (editors.length > 1)
+      return {
+        error:
+          "ChatGPT has multiple editable message boxes. Inspect the destination tab before sending.",
+      };
+    if (editors.length === 1) return { url: location.href };
     const button = [...document.querySelectorAll("button")].find((button) =>
       /^(continue this conversation|continue conversation|continue chat|继续此对话|继续对话)$/i.test(
         button.innerText.trim(),
@@ -68,10 +77,13 @@ export async function prepareComposer() {
   }
 }
 
-export async function sendMarker(marker) {
-  const composer = document.querySelector("#prompt-textarea");
-  if (!composer || !composer.isContentEditable)
+export async function sendMarker(marker, selector) {
+  const editors = [...document.querySelectorAll(selector)].filter(
+    (editor) => editor.isContentEditable && editor.getClientRects().length,
+  );
+  if (editors.length !== 1)
     return { error: "ChatGPT's message editor changed. No message was sent." };
+  const composer = editors[0];
   if (composer.innerText.trim())
     return {
       error:
@@ -88,8 +100,11 @@ export async function sendMarker(marker) {
     };
   const deadline = Date.now() + 10000;
   for (;;) {
-    const send = document.querySelector(
-      '[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="发送提示"]',
+    const form = composer.closest("form");
+    const legacySend =
+      '[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="发送提示"]';
+    const send = (form || document).querySelector(
+      form ? `button[type="submit"], ${legacySend}` : legacySend,
     );
     if (send && !send.disabled && send.getClientRects().length) {
       send.click();

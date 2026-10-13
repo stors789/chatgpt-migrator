@@ -1,5 +1,10 @@
 import { conversationIdFromUrl, messagesOf, verifyCopy } from "./proof.js";
-import { browserRequest, prepareComposer, sendMarker } from "./page.js";
+import {
+  browserRequest,
+  prepareComposer,
+  sendMarker,
+  COMPOSER_SELECTOR,
+} from "./page.js";
 
 const ORIGIN = "https://chatgpt.com";
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -296,10 +301,12 @@ export class ChatGPT {
         throw new Error("The shared conversation did not finish loading.");
       await delay(200);
     }
-    const prepared = await this.execute(tab.id, prepareComposer);
+    const prepared = await this.execute(tab.id, prepareComposer, [
+      COMPOSER_SELECTOR,
+    ]);
     const earlyId = conversationIdFromUrl(prepared.url);
     if (earlyId && earlyId !== job.sourceId) await saveTarget(earlyId);
-    await this.execute(tab.id, sendMarker, [job.marker]);
+    await this.execute(tab.id, sendMarker, [job.marker, COMPOSER_SELECTOR]);
     const receiptDeadline = Date.now() + 45000;
     for (;;) {
       const current = await this.api.tabs.get(tab.id);
