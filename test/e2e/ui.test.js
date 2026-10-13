@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { fixture } from "./browser-fixture.js";
+import { snapshotOf } from "../../src/proof.js";
 
 async function until(condition, timeout = 10000) {
   const start = Date.now();
@@ -349,4 +350,276 @@ test("current ChatGPT editor without prompt-textarea ID submits only its own for
   );
   assert.equal(markers.length, 1);
   assert.equal((await app.jobs())[0].proof.count, 2);
+});
+
+test("a stalled image does not block receiving when the editor is already usable", async (t) => {
+  const app = await fixture({ composer: "current", slowResource: true });
+  t.after(() => app.close());
+  const page = await pageFor(app);
+  await page
+    .getByRole("checkbox", { name: "A weekend in Kyoto", exact: true })
+    .check();
+  await page.locator("#sharing-confirm").check();
+  await page.locator("#start").click();
+  await until(async () => (await app.jobs())[0]?.status === "verified", 20000);
+  assert.equal(app.sent, 1);
+  assert.ok(
+    app.readyStates[0] !== "complete",
+    "the load event must still be waiting at send time",
+  );
+});
+
+async function stoppedJob(app, error, fields = {}) {
+  const source = app.source.get("source-1");
+  const id = "existing-receipt";
+  const job = {
+    id,
+    sourceId: "source-1",
+    title: source.title,
+    sourceAccount: "source-account",
+    targetAccount: "target-account",
+    status: "needs-review",
+    createdAt: new Date().toISOString(),
+    error,
+    marker: `Keep my original receipt\n[ChatPort:${id}]`,
+    shareUrl: "https://chatgpt.com/share/share-source-1",
+    snapshot: await snapshotOf(source),
+    ...fields,
+  };
+  app.shares.set("share-source-1", structuredClone(source));
+  return job;
+}
+
+async function openReceiving(page, url) {
+  const tab = await page.evaluate(async (url) => {
+    const { accountTabs } = await chrome.storage.session.get("accountTabs");
+    const destination = await chrome.tabs.get(accountTabs.target);
+    return chrome.tabs.create({
+      windowId: destination.windowId,
+      url,
+      active: false,
+    });
+  }, url);
+  await until(() =>
+    page.evaluate(
+      async (id) => (await chrome.tabs.get(id)).status === "complete",
+      tab.id,
+    ),
+  );
+  return tab.id;
+}
+
+async function restoreJobs(page, jobs) {
+  await page.evaluate(
+    (jobs) => chrome.storage.local.set({ progress: { version: 1, jobs } }),
+    jobs,
+  );
+  await page.reload();
+  await page.locator("#load-catalog").click();
+  await page.getByText("6 conversations loaded", { exact: true }).waitFor();
+}
+
+test("an old loading failure resumes its open tab and queued jobs remain available with explicit counts", async (t) => {
+  const app = await fixture({ composer: "current" });
+  t.after(() => app.close());
+  const page = await pageFor(app);
+  const job = await stoppedJob(
+    app,
+    "The shared conversation did not finish loading.",
+  );
+  await openReceiving(page, job.shareUrl);
+  const queued = {
+    id: "queued-receipt",
+    sourceId: "source-2",
+    title: app.source.get("source-2").title,
+    sourceAccount: job.sourceAccount,
+    targetAccount: job.targetAccount,
+    status: "pending",
+    createdAt: job.createdAt,
+    marker: "Continue queued receipt\n[ChatPort:queued-receipt]",
+  };
+  await restoreJobs(page, [job, queued]);
+  await page.getByRole("checkbox", { name: job.title, exact: true }).check();
+  await page.getByRole("checkbox", { name: queued.title, exact: true }).check();
+  assert.equal(
+    await page.locator("#selection-description").innerText(),
+    "2 selected conversations will be received.",
+  );
+  await page.locator(`[data-receipt="${job.id}"]`).click();
+  await page
+    .getByRole("button", { name: "Retry this conversation", exact: true })
+    .waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  await mkdir(".impeccable/review", { recursive: true });
+  await page.screenshot({
+    path: ".impeccable/review/recovery-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "中文", exact: true }).click();
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+    false,
+  );
+  await page.screenshot({
+    path: ".impeccable/review/recovery-mobile.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "重试这条对话", exact: true }).click();
+  await until(async () => (await app.jobs())[0]?.status === "verified", 20000);
+  assert.equal((await app.jobs())[0].marker, job.marker);
+  assert.equal((await app.jobs())[1].status, "pending");
+  assert.equal(app.sent, 1);
+  assert.equal(
+    app.shareVisits,
+    1,
+    "retry must reuse the original receiving tab",
+  );
+  await page.locator("#sharing-confirm").check();
+  await page.locator("#delay").fill("3");
+  await page.locator("#start").click();
+  await until(
+    async () => (await app.jobs()).every((job) => job.status === "verified"),
+    20000,
+  );
+  assert.equal(app.sent, 2);
+  assert.equal((await app.jobs()).length, 2);
+});
+
+test("recovery continues a supplied private copy, preserves a different draft, then sends the original marker once", async (t) => {
+  const app = await fixture({ composer: "current" });
+  t.after(() => app.close());
+  const page = await pageFor(app);
+  const job = await stoppedJob(
+    app,
+    "The shared chat has no editable composer. Inspect the destination tab.",
+  );
+  const data = structuredClone(app.source.get(job.sourceId));
+  data.conversation_id = "existing-private-copy";
+  app.target.set(data.conversation_id, data);
+  const url = `https://chatgpt.com/c/${data.conversation_id}`;
+  const tabId = await openReceiving(page, url);
+  const draft = async (text) =>
+    page.evaluate(
+      async ({ tabId, text }) =>
+        chrome.scripting.executeScript({
+          target: { tabId },
+          func: (text) => {
+            document.querySelector(
+              'form [role="textbox"][contenteditable="true"]:not([style])',
+            ).innerText = text;
+          },
+          args: [text],
+        }),
+      { tabId, text },
+    );
+  await draft("An existing draft that must stay intact");
+  await restoreJobs(page, [job]);
+  await page.locator(`[data-receipt="${job.id}"]`).click();
+  await page.locator("#destination-url").fill(url);
+  await page
+    .getByRole("button", { name: "Retry this conversation", exact: true })
+    .click();
+  await until(async () => (await app.jobs())[0].status === "failed");
+  await until(
+    async () => !(await page.locator("#destination-url").isDisabled()),
+  );
+  assert.equal(app.sent, 0);
+  const [{ result: preserved }] = await page.evaluate(
+    async (tabId) =>
+      chrome.scripting.executeScript({
+        target: { tabId },
+        func: () =>
+          document.querySelector('[aria-label="询问 ChatGPT"]').innerText,
+      }),
+    tabId,
+  );
+  assert.equal(preserved, "An existing draft that must stay intact");
+  await draft(job.marker);
+  await page
+    .getByRole("button", { name: "Retry this conversation", exact: true })
+    .click();
+  await until(async () => (await app.jobs())[0].status === "verified", 20000);
+  assert.equal((await app.jobs())[0].targetId, data.conversation_id);
+  assert.equal(app.target.size, 1);
+  assert.equal(app.sent, 1);
+  assert.equal(app.shareVisits, 0);
+});
+
+test("a shared-link redirect to a root-page editor stops before any message is sent", async (t) => {
+  const app = await fixture({ composer: "current" });
+  t.after(() => app.close());
+  const page = await pageFor(app);
+  app.setMode("redirect-home");
+  await page
+    .getByRole("checkbox", { name: "A weekend in Kyoto", exact: true })
+    .check();
+  await page.locator("#sharing-confirm").check();
+  await page.locator("#start").click();
+  await until(async () => (await app.jobs())[0]?.status === "failed");
+  assert.equal(app.sent, 0);
+  assert.equal((await app.jobs())[0].sendAttempted, false);
+  assert.match((await app.jobs())[0].error, /different page/);
+  await page
+    .locator("#notice")
+    .getByText(/This batch stopped/)
+    .waitFor();
+});
+
+test("editing a receipt draft while the send button is disabled stops without overwriting or sending it", async (t) => {
+  const app = await fixture({ composer: "current" });
+  t.after(() => app.close());
+  const page = await pageFor(app);
+  app.setMode("wait-to-send");
+  await page
+    .getByRole("checkbox", { name: "A weekend in Kyoto", exact: true })
+    .check();
+  await page.locator("#sharing-confirm").check();
+  await page.locator("#start").click();
+  await until(async () => {
+    const job = (await app.jobs())[0];
+    if (job?.status !== "sending") return false;
+    return page.evaluate(
+      async ({ tabId, marker }) => {
+        const [{ result }] = await chrome.scripting.executeScript({
+          target: { tabId },
+          injectImmediately: true,
+          func: (marker) =>
+            document.querySelector('[aria-label="询问 ChatGPT"]').innerText ===
+            marker,
+          args: [marker],
+        });
+        return result;
+      },
+      { tabId: job.receivingTabId, marker: job.marker },
+    );
+  });
+  const tabId = (await app.jobs())[0].receivingTabId;
+  await page.evaluate(
+    async (tabId) =>
+      chrome.scripting.executeScript({
+        target: { tabId },
+        injectImmediately: true,
+        func: () => {
+          document.querySelector('[aria-label="询问 ChatGPT"]').innerText =
+            "A draft edited while waiting";
+        },
+      }),
+    tabId,
+  );
+  await until(async () => (await app.jobs())[0]?.status === "failed");
+  const [{ result: draft }] = await page.evaluate(
+    async (tabId) =>
+      chrome.scripting.executeScript({
+        target: { tabId },
+        func: () =>
+          document.querySelector('[aria-label="询问 ChatGPT"]').innerText,
+      }),
+    tabId,
+  );
+  assert.equal(draft, "A draft edited while waiting");
+  assert.equal(app.sent, 0);
+  assert.equal((await app.jobs())[0].sendAttempted, false);
 });

@@ -59,12 +59,16 @@ export class FakeChatGPT {
   async share() {
     return "https://chatgpt.com/share/synthetic-share";
   }
-  async claim(job, saveTarget) {
+  async claim(job, saveTarget, targetId) {
+    if (targetId && this.copies.has(targetId)) {
+      await saveTarget({ targetId, sendAttempted: true });
+      return;
+    }
     this.claims++;
     const data = append(structuredClone(this.sourceConversation), job.marker);
     data.conversation_id = `copy-${this.claims}`;
     this.copies.set(data.conversation_id, data);
-    await saveTarget(data.conversation_id);
+    await saveTarget({ targetId: data.conversation_id, sendAttempted: true });
   }
   async verify(job) {
     const { verifyCopy } = await import("../src/proof.js");

@@ -27,15 +27,17 @@ test("successful migration persists only receipts and skips verified copies on r
 });
 test("a send with no persisted copy stays uncertain and is never automatically resent", async (t) => {
   const { runner, store, api } = await setup(t);
-  api.claim = async () => {
+  api.claim = async (job, save) => {
     api.claims++;
+    await save({ sendAttempted: true });
     throw new Error("Browser closed after send");
   };
   await runner.start(["source-chat"], catalog);
   await runner.task;
   assert.equal(store.jobs[0].status, "needs-review");
-  await runner.start(["source-chat"], catalog);
-  await runner.task;
+  await assert.rejects(runner.start(["source-chat"], catalog), {
+    code: "REVIEW_REQUIRED",
+  });
   assert.equal(api.claims, 1);
 });
 test("verification failure never becomes a green success", async (t) => {
@@ -184,4 +186,76 @@ test("malformed state is not silently overwritten", async (t) => {
   await storage.set({ progress: "invalid" });
   await assert.rejects(new Store(storage).load());
   assert.equal((await storage.get("progress")).progress, "invalid");
+});
+
+test("old loading and composer failures remain recoverable after upgrading", async (t) => {
+  const { storage } = await setup(t);
+  const errors = [
+    "The shared conversation did not finish loading.",
+    "The shared chat has no editable composer. Inspect the destination tab.",
+    "The previous run stopped during receipt. Check the destination before sending again.",
+  ];
+  await storage.set({
+    progress: {
+      version: 1,
+      jobs: errors.map((error) => ({ status: "needs-review", error })),
+    },
+  });
+  const restored = new Store(storage);
+  await restored.load();
+  assert.deepEqual(
+    restored.jobs.map((job) => job.sendAttempted),
+    [false, false, undefined],
+  );
+});
+
+test("a known pre-send receipt can be retried without replacing its ID or marker", async (t) => {
+  const { runner, api, store } = await setup(t);
+  const claim = api.claim.bind(api);
+  api.claim = async () => {
+    throw new Error("Editor unavailable before sending");
+  };
+  await runner.start(["source-chat"], catalog);
+  await runner.task;
+  const job = store.jobs[0];
+  const marker = job.marker;
+  const id = job.id;
+  assert.equal(job.status, "failed");
+  api.claim = claim;
+  await runner.retry(id);
+  assert.equal(job.status, "verified");
+  assert.equal(job.marker, marker);
+  assert.equal(job.id, id);
+  assert.equal(store.jobs.length, 1);
+});
+
+test("retry refuses a potentially sent receipt and a changed account before side effects", async (t) => {
+  const { runner, api, store } = await setup(t);
+  api.claim = async (job, save) => {
+    await save({ sendAttempted: true });
+    throw new Error("Send response lost");
+  };
+  await runner.start(["source-chat"], catalog);
+  await runner.task;
+  const job = store.jobs[0];
+  await assert.rejects(runner.retry(job.id), /already have sent/);
+  job.sendAttempted = false;
+  api.target.id = "changed-target";
+  await assert.rejects(runner.retry(job.id), /account changed/);
+  assert.equal(api.claims, 0);
+  assert.equal(runner.running, false);
+});
+
+test("a formerly unsent failure completed manually is found before retry sends anything", async (t) => {
+  const { runner, api, store } = await setup(t);
+  await runner.start(["source-chat"], catalog);
+  await runner.task;
+  const job = store.jobs[0];
+  job.status = "needs-review";
+  job.sendAttempted = false;
+  job.targetId = null;
+  await runner.retry(job.id);
+  assert.equal(job.status, "verified");
+  assert.equal(api.claims, 1);
+  assert.equal(api.copies.size, 1);
 });

@@ -124,7 +124,12 @@ export function createApplication(store, chatgpt, options = {}) {
           await chatgpt.openDestination(job.targetId);
           break;
         }
+        case "retry":
         case "recheck": {
+          if (!snapshot().jobs.some((job) => job.id === body.id))
+            throw new Error(
+              "Check the original account pair before recovering this receipt.",
+            );
           const targetId = body.url
             ? conversationIdFromUrl(body.url)
             : undefined;
@@ -132,7 +137,8 @@ export function createApplication(store, chatgpt, options = {}) {
             throw new Error(
               "Enter a ChatGPT conversation URL, not a shared link.",
             );
-          await migration.recheck(body.id, targetId);
+          if (route === "retry") await migration.retry(body.id, targetId);
+          else await migration.recheck(body.id, targetId);
           break;
         }
         default:

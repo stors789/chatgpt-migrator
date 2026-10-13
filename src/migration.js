@@ -2,6 +2,10 @@ import { snapshotOf } from "./proof.js";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+export const canRetry = (job) =>
+  (job.status === "failed" && job.sendAttempted !== true) ||
+  (job.status === "needs-review" && job.sendAttempted === false);
+
 export class Migration {
   constructor(store, chatgpt, { verificationDelays = [0, 2000, 5000] } = {}) {
     this.store = store;
@@ -61,6 +65,7 @@ export class Migration {
         );
       }
       const jobs = [];
+      let needsReview = false;
       for (const item of selected) {
         let job = this.store.jobs.find(
           (j) =>
@@ -82,8 +87,16 @@ export class Migration {
           };
           this.store.jobs.push(job);
         }
-        if (["pending", "failed"].includes(job.status)) jobs.push(job);
+        if (job.status === "pending" || canRetry(job)) jobs.push(job);
+        else if (job.status === "needs-review") needsReview = true;
       }
+      if (!jobs.length && needsReview)
+        throw Object.assign(
+          new Error(
+            "Open the stopped conversations' receipts and check the existing copies before continuing.",
+          ),
+          { code: "REVIEW_REQUIRED" },
+        );
       await this.store.save();
       this.task = this.run(jobs, pair, seconds * 1000).finally(() => {
         this.running = false;
@@ -115,7 +128,7 @@ export class Migration {
     }
     return result;
   }
-  async run(jobs, pair, delayMs) {
+  async run(jobs, pair, delayMs, targetId) {
     this.error = null;
     for (const [index, job] of jobs.entries()) {
       if (this.pauseRequested) break;
@@ -123,6 +136,7 @@ export class Migration {
       let claimStarted = false;
       try {
         await this.assertAccounts(pair);
+        const retrying = canRetry(job);
         if (!job.shareUrl) {
           await this.update(job, { status: "sharing", error: null });
           const source = await this.chatgpt.conversation(
@@ -138,10 +152,19 @@ export class Migration {
           await this.update(job, { snapshot, shareUrl });
         }
         await this.assertAccounts(pair);
-        await this.update(job, { status: "opening", error: null });
+        const recoveredId =
+          targetId ||
+          (retrying && job.snapshot && (await this.chatgpt.recover(job)));
+        await this.update(job, {
+          status: "opening",
+          error: null,
+          sendAttempted: false,
+        });
         claimStarted = true;
-        await this.chatgpt.claim(job, async (targetId) =>
-          this.update(job, { targetId, status: "verifying" }),
+        await this.chatgpt.claim(
+          job,
+          async (fields) => this.update(job, fields),
+          recoveredId || undefined,
         );
         await this.update(job, { status: "verifying" });
         const proof = await this.verified(job);
@@ -149,7 +172,10 @@ export class Migration {
         await this.update(job, { status: "verified", proof, error: null });
       } catch (error) {
         await this.update(job, {
-          status: claimStarted ? "needs-review" : "failed",
+          status:
+            !claimStarted || job.sendAttempted === false
+              ? "failed"
+              : "needs-review",
           error: error.message,
         });
         this.error = error.message;
@@ -168,6 +194,29 @@ export class Migration {
   }
   pause() {
     this.pauseRequested = true;
+  }
+  async retry(id, targetId) {
+    if (this.running)
+      throw new Error("Wait for the current operation to finish.");
+    const job = this.store.jobs.find((item) => item.id === id);
+    if (!job || !canRetry(job))
+      throw new Error(
+        "This receipt may already have sent a message. Check its existing copy first.",
+      );
+    this.running = true;
+    this.pauseRequested = false;
+    try {
+      const pair = {
+        source: { id: job.sourceAccount },
+        target: { id: job.targetAccount },
+      };
+      await this.assertAccounts(pair);
+      await this.run([job], pair, 0, targetId);
+      if (job.status !== "verified") throw new Error(job.error);
+    } finally {
+      this.running = false;
+      this.current = null;
+    }
   }
   async recheck(id, targetId) {
     if (this.running)

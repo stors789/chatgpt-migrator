@@ -89,6 +89,21 @@ export const translations = {
     original: "Original conversation",
     destination: "Destination copy",
     checkAgain: "Check again without resending",
+    retryReceipt: "Retry this conversation",
+    retryHelp:
+      "No receipt message was sent. Retry continues the receiving tab if it is still open. If you already have a destination copy, enter its URL to continue it after checking the original text.",
+    reviewHelp:
+      "A receipt message may already have been sent. Check the existing copy first. Enter its URL if it was not found automatically.",
+    selectionReady: "{n} selected conversations will be received.",
+    selectionReview:
+      "{n} need checking first; open their receipts to recover them.",
+    selectionVerified: "{n} are already verified and will be skipped.",
+    recoveryHelp:
+      "Open a stopped conversation's receipt to retry or check its copy. The remaining queued conversations can be started afterward.",
+    batchStopped:
+      "This batch stopped. Open the affected conversation's receipt to recover it. {error}",
+    REVIEW_REQUIRED:
+      "Open the stopped conversations' receipts and check their existing copies before continuing.",
     destinationUrl: "Destination conversation URL (optional)",
     markerLabel: "Receipt message to look for",
     user: "You",
@@ -186,6 +201,19 @@ export const translations = {
     original: "原始对话",
     destination: "新账号中的副本",
     checkAgain: "重新核验，不重复发送",
+    retryReceipt: "重试这条对话",
+    retryHelp:
+      "尚未发送迁移消息。重试会继续使用仍打开的接收页面。如果新账号中已经有副本，可填入其链接，核对原文后继续接收。",
+    reviewHelp:
+      "迁移消息可能已发送，请先核验已有副本。如果没有自动找到，可填入新账号中副本的链接。",
+    selectionReady: "将接收已选中的 {n} 条对话。",
+    selectionReview: "另有 {n} 条需先检查，请打开其迁移凭证恢复。",
+    selectionVerified: "{n} 条已经核验，将跳过。",
+    recoveryHelp:
+      "打开未完成对话的「迁移凭证」，即可重试或核验已有副本。其余等待中的对话可随后继续迁移。",
+    batchStopped: "本批次已停止，请打开对应对话的「迁移凭证」恢复。{error}",
+    REVIEW_REQUIRED:
+      "请先打开未完成对话的「迁移凭证」，核验已有副本，再继续迁移。",
     destinationUrl: "新账号中的对话链接（可选）",
     markerLabel: "需要找到的迁移标记消息",
     user: "你",

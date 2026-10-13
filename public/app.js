@@ -1,6 +1,7 @@
 import { Store } from "../src/store.js";
 import { ChatGPT } from "../src/chatgpt.js";
 import { createApplication } from "../src/application.js";
+import { canRetry } from "../src/migration.js";
 import { translations } from "./i18n.js";
 
 const $ = (id) => document.getElementById(id);
@@ -32,6 +33,7 @@ let previewData = null;
 let receiptStamp = "";
 let rowsMarkup;
 let projectMarkup;
+let reportedError = null;
 const t = (key, values = {}) =>
   Object.entries(values).reduce(
     (text, [name, value]) => text.replaceAll(`{${name}}`, value),
@@ -85,6 +87,16 @@ async function refresh() {
     previewId = null;
   }
   state = next;
+  if (
+    !localBusy &&
+    !state.running &&
+    state.error &&
+    state.error !== reportedError
+  ) {
+    notice(t("batchStopped", { error: state.error }), true);
+    reportedError = state.error;
+  }
+  if (!state.error) reportedError = null;
   if (state.catalogLoaded)
     selected = new Set(
       [...selected].filter((id) =>
@@ -200,8 +212,24 @@ function render() {
     );
   }
   $("selected-count").textContent = selected.size;
+  const selectedJobs = [...selected].map((id) => jobOf(id));
+  const ready = selectedJobs.filter(
+    (job) => !job || job.status === "pending" || canRetry(job),
+  ).length;
+  const review = selectedJobs.filter(
+    (job) => job?.status === "needs-review" && !canRetry(job),
+  ).length;
+  const already = selectedJobs.filter(
+    (job) => job?.status === "verified",
+  ).length;
   $("selection-description").textContent = selected.size
-    ? t("selected", { n: selected.size })
+    ? [
+        t("selectionReady", { n: ready }),
+        review ? t("selectionReview", { n: review }) : "",
+        already ? t("selectionVerified", { n: already }) : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
     : t("selectHelp");
   $("selected-list").innerHTML = [...selected]
     .map(
@@ -210,12 +238,9 @@ function render() {
     )
     .join("");
   $("selected-details").hidden = !selected.size;
-  const runnable = [...selected].some(
-    (id) => !jobOf(id) || ["pending", "failed"].includes(jobOf(id).status),
-  );
   $("start").disabled =
     busy ||
-    !runnable ||
+    !ready ||
     !$("sharing-confirm").checked ||
     !state.accounts.source ||
     !state.accounts.target ||
@@ -240,6 +265,11 @@ function render() {
   $("progress-detail").textContent = uncertain
     ? t("checked", { n: verified, r: uncertain })
     : t("stateSaved");
+  if (
+    !state.running &&
+    state.jobs.some((job) => ["failed", "needs-review"].includes(job.status))
+  )
+    $("progress-detail").textContent += ` ${t("recoveryHelp")}`;
   $("export").hidden = !state.jobs.length;
   localStorage.setItem(
     `chatport-selection:${sourceKey}`,
@@ -291,16 +321,20 @@ function receipt(id, focus = true) {
   const stamp = JSON.stringify({ job, language });
   if (!focus && receiptStamp === stamp) {
     $("preview-content")
-      .querySelectorAll("button")
-      .forEach((button) => {
-        button.disabled = state.running || localBusy;
+      .querySelectorAll("button, input")
+      .forEach((control) => {
+        control.disabled = state.running || state.loading || localBusy;
       });
     return;
   }
+  const previousUrl =
+    previewId === `receipt:${id}` ? $("destination-url")?.value || "" : "";
   receiptStamp = stamp;
   previewId = `receipt:${id}`;
   previewData = null;
-  const previousUrl = $("destination-url")?.value || "";
+  const retryable = canRetry(job);
+  const recoverable = retryable || job.status === "needs-review";
+  const busy = state.running || state.loading || localBusy;
   $("preview").hidden = false;
   $("workspace").classList.add("has-preview");
   $("preview-title").textContent = `${t("receipt")} · ${job.title}`;
@@ -311,7 +345,7 @@ function receipt(id, focus = true) {
     <p><a href="https://chatgpt.com/c/${encodeURIComponent(job.sourceId)}" target="_blank" rel="noreferrer">${h(t("original"))}</a>${job.targetId ? ` · <button class="text-link" data-destination="${h(id)}" ${state.running || localBusy ? "disabled" : ""}>${h(t("destination"))}</button>` : ""}</p>
     ${job.snapshot?.hasMedia ? `<p class="media-warning">${h(t("mediaNote"))}</p>` : ""}
     <details><summary>${h(t("markerLabel"))}</summary><pre>${h(job.marker)}</pre></details>
-    ${job.status === "needs-review" ? `<label class="recover"><span>${h(t("destinationUrl"))}</span><input type="url" id="destination-url" placeholder="https://chatgpt.com/c/…" value="${h(previousUrl)}"></label><button data-recheck="${h(id)}" ${state.running || localBusy ? "disabled" : ""}>${h(t("checkAgain"))}</button>` : ""}
+    ${recoverable ? `<p>${h(t(retryable ? "retryHelp" : "reviewHelp"))}</p><label class="recover"><span>${h(t("destinationUrl"))}</span><input type="url" id="destination-url" placeholder="https://chatgpt.com/c/…" value="${h(previousUrl)}" ${busy ? "disabled" : ""}></label><button data-${retryable ? "retry" : "recheck"}="${h(id)}" ${busy ? "disabled" : ""}>${h(t(retryable ? "retryReceipt" : "checkAgain"))}</button>` : ""}
     </div>`;
   if (focus) {
     $("preview-title").focus({ preventScroll: true });
@@ -425,10 +459,14 @@ $("preview-content").addEventListener("click", (event) => {
     });
     return;
   }
-  const id = event.target.closest("button")?.dataset.recheck;
+  const button = event.target.closest("button");
+  const id = button?.dataset.retry || button?.dataset.recheck;
   if (id)
     action(async () => {
-      await api("recheck", { id, url: $("destination-url").value.trim() });
+      await api(button.dataset.retry ? "retry" : "recheck", {
+        id,
+        url: $("destination-url").value.trim(),
+      });
       notice("");
       receipt(id, false);
     });

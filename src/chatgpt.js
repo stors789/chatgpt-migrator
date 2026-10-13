@@ -1,4 +1,9 @@
-import { conversationIdFromUrl, messagesOf, verifyCopy } from "./proof.js";
+import {
+  conversationIdFromUrl,
+  messagesOf,
+  snapshotOf,
+  verifyCopy,
+} from "./proof.js";
 import {
   browserRequest,
   prepareComposer,
@@ -14,7 +19,6 @@ const loginError = (code, message) =>
 export class ChatGPT {
   constructor(api = globalThis.chrome) {
     this.api = api;
-    this.receiving = new Map();
   }
 
   async open(role) {
@@ -92,18 +96,22 @@ export class ChatGPT {
     await this.api.windows.update(target.windowId, { focused: true });
   }
 
-  async execute(tabId, func, args = []) {
+  async execute(tabId, func, args = [], injectImmediately = false) {
     const results = await this.api.scripting.executeScript({
       target: { tabId },
       func,
       args,
+      injectImmediately,
     });
     const result = results[0]?.result;
     if (!result)
       throw new Error(
         "ChatGPT did not return a browser result. Inspect its tab before retrying.",
       );
-    if (result.error) throw new Error(result.error);
+    if (result.error)
+      throw Object.assign(new Error(result.error), {
+        noMessageSent: result.sent === false,
+      });
     return result;
   }
 
@@ -286,33 +294,121 @@ export class ChatGPT {
     return `${ORIGIN}/share/${encodeURIComponent(data.share_id)}`;
   }
 
-  async claim(job, saveTarget) {
+  async claim(job, saveReceipt, targetId) {
     const destination = await this.tab("target");
-    const tab = await this.api.tabs.create({
-      windowId: destination.windowId,
-      url: job.shareUrl,
-      active: false,
-    });
-    this.receiving.set(job.id, tab.id);
-    // Failed receiving tabs stay open for manual inspection. A send is never retried here.
-    const deadline = Date.now() + 60000;
-    while ((await this.api.tabs.get(tab.id)).status !== "complete") {
+    const requestedId = targetId || job.targetId;
+    let tab =
+      !targetId &&
+      job.receivingTabId &&
+      (await this.api.tabs.get(job.receivingTabId).catch(() => null));
+    if (
+      tab &&
+      (!tab.incognito ||
+        tab.windowId !== destination.windowId ||
+        (tab.url !== job.shareUrl && !conversationIdFromUrl(tab.url)))
+    )
+      throw new Error(
+        "The receiving tab now shows another page. Restore it or close it before retrying.",
+      );
+    if (!tab) {
+      const candidates = (
+        await this.api.tabs.query({ windowId: destination.windowId })
+      ).filter(
+        (candidate) =>
+          candidate.incognito &&
+          (requestedId
+            ? conversationIdFromUrl(candidate.url) === requestedId
+            : candidate.url === job.shareUrl),
+      );
+      if (candidates.length > 1)
+        throw new Error(
+          "More than one receiving tab matches this receipt. Keep one open and close the duplicates before retrying.",
+        );
+      tab =
+        candidates[0] ||
+        (await this.api.tabs.create({
+          windowId: destination.windowId,
+          url: requestedId ? `${ORIGIN}/c/${requestedId}` : job.shareUrl,
+          active: false,
+        }));
+    }
+    // Save the tab before touching its editor. Reloads can resume the same copy.
+    await saveReceipt({ receivingTabId: tab.id, sendAttempted: false });
+    const deadline = Date.now() + 30000;
+    // A committed ChatGPT URL is sufficient. Slow images must not block a usable editor.
+    while (!(await this.api.tabs.get(tab.id)).url?.startsWith(`${ORIGIN}/`)) {
       if (Date.now() > deadline)
-        throw new Error("The shared conversation did not finish loading.");
+        throw new Error(
+          "The receiving page did not open. No message was sent; retry from this receipt.",
+        );
       await delay(200);
     }
-    const prepared = await this.execute(tab.id, prepareComposer, [
-      COMPOSER_SELECTOR,
-    ]);
+    const prepared = await this.execute(
+      tab.id,
+      prepareComposer,
+      [COMPOSER_SELECTOR],
+      true,
+    );
     const earlyId = conversationIdFromUrl(prepared.url);
-    if (earlyId && earlyId !== job.sourceId) await saveTarget(earlyId);
-    await this.execute(tab.id, sendMarker, [job.marker, COMPOSER_SELECTOR]);
+    const preparedPage = new URL(prepared.url);
+    const sharedPage = new URL(job.shareUrl);
+    const intendedShare =
+      preparedPage.origin === ORIGIN &&
+      sharedPage.origin === ORIGIN &&
+      sharedPage.pathname.startsWith("/share/") &&
+      preparedPage.pathname.replace(/\/$/, "") ===
+        sharedPage.pathname.replace(/\/$/, "");
+    if (!earlyId && !intendedShare)
+      throw new Error(
+        "The shared link opened a different page. No message was sent; inspect the receiving tab.",
+      );
+    if (earlyId) {
+      const target = await this.conversation("target", earlyId);
+      if (
+        earlyId === job.sourceId ||
+        (target.conversation_id || target.id) !== earlyId ||
+        target.is_read_only
+      )
+        throw new Error(
+          "This tab is not a distinct editable destination copy.",
+        );
+      if (
+        messagesOf(target).some(
+          (message) => message.role === "user" && message.text === job.marker,
+        )
+      ) {
+        await saveReceipt({ targetId: earlyId, sendAttempted: true });
+        return earlyId;
+      }
+      const snapshot = await snapshotOf(target);
+      if (
+        snapshot.count !== job.snapshot.count ||
+        snapshot.digest !== job.snapshot.digest
+      )
+        throw new Error(
+          "The existing copy does not match the original messages. No message was sent.",
+        );
+      await saveReceipt({ targetId: earlyId });
+    }
+    // A crash or lost scripting response from this point requires checking, not resending.
+    await saveReceipt({ status: "sending", sendAttempted: true });
+    try {
+      await this.execute(
+        tab.id,
+        sendMarker,
+        [job.marker, COMPOSER_SELECTOR, prepared.url],
+        true,
+      );
+    } catch (error) {
+      if (error.noMessageSent) await saveReceipt({ sendAttempted: false });
+      throw error;
+    }
     const receiptDeadline = Date.now() + 45000;
     for (;;) {
       const current = await this.api.tabs.get(tab.id);
       const targetId = conversationIdFromUrl(current.url);
       if (targetId && targetId !== job.sourceId) {
-        await saveTarget(targetId);
+        await saveReceipt({ targetId, status: "verifying" });
         return targetId;
       }
       if (Date.now() > receiptDeadline)
@@ -339,15 +435,28 @@ export class ChatGPT {
       inHistory: history.some((item) => item.id === job.targetId),
       marker: job.marker,
     });
-    if (proof.verified && this.receiving.has(job.id)) {
-      await this.api.tabs.remove(this.receiving.get(job.id)).catch(() => {});
-      this.receiving.delete(job.id);
+    if (proof.verified && job.receivingTabId) {
+      const tab = await this.api.tabs.get(job.receivingTabId).catch(() => null);
+      if (tab?.incognito && conversationIdFromUrl(tab.url) === job.targetId)
+        await this.api.tabs.remove(tab.id).catch(() => {});
     }
     return proof;
   }
 
   async recover(job) {
     if (job.targetId) return job.targetId;
+    if (job.receivingTabId) {
+      const destination = await this.tab("target");
+      const tab = await this.api.tabs.get(job.receivingTabId).catch(() => null);
+      const id = conversationIdFromUrl(tab?.url);
+      if (
+        tab?.incognito &&
+        tab.windowId === destination.windowId &&
+        id &&
+        id !== job.sourceId
+      )
+        return id;
+    }
     const history = await this.list("target");
     for (const item of history) {
       const value = item.update_time || item.create_time;

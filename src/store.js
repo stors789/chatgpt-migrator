@@ -14,8 +14,21 @@ export class Store {
       this.jobs = progress.jobs;
     }
     for (const job of this.jobs) {
+      // These released errors occurred before sendMarker was called. Preserve
+      // that fact when upgrading so the user's stopped receipts can resume.
+      if (
+        job.sendAttempted === undefined &&
+        [
+          "The shared conversation did not finish loading.",
+          "The shared chat has no editable composer. Inspect the destination tab.",
+          "ChatGPT has multiple editable message boxes. Inspect the destination tab before sending.",
+        ].includes(job.error)
+      ) {
+        job.sendAttempted = false;
+        if (job.status === "needs-review") job.status = "failed";
+      }
       if (["opening", "sending", "verifying"].includes(job.status)) {
-        job.status = "needs-review";
+        job.status = job.sendAttempted === false ? "failed" : "needs-review";
         job.error =
           "The previous run stopped during receipt. Check the destination before sending again.";
       } else if (job.status === "sharing") job.status = "pending";

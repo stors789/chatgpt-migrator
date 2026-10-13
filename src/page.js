@@ -77,29 +77,54 @@ export async function prepareComposer(selector) {
   }
 }
 
-export async function sendMarker(marker, selector) {
+export async function sendMarker(marker, selector, expectedUrl) {
+  if (expectedUrl && location.href !== expectedUrl)
+    return {
+      error: "The destination page changed. No message was sent.",
+      sent: false,
+    };
   const editors = [...document.querySelectorAll(selector)].filter(
     (editor) => editor.isContentEditable && editor.getClientRects().length,
   );
   if (editors.length !== 1)
-    return { error: "ChatGPT's message editor changed. No message was sent." };
+    return {
+      error: "ChatGPT's message editor changed. No message was sent.",
+      sent: false,
+    };
   const composer = editors[0];
-  if (composer.innerText.trim())
+  const text = composer.innerText.replace(/\r\n/g, "\n").trimEnd();
+  if (text.trim() && text !== marker.trimEnd())
     return {
       error:
         "The destination editor already contains text. Inspect it before continuing.",
+      sent: false,
     };
   composer.focus();
   if (
-    !document.execCommand("insertText", false, marker) ||
+    (!text.trim() && !document.execCommand("insertText", false, marker)) ||
     composer.innerText.replace(/\r\n/g, "\n").trimEnd() !== marker.trimEnd()
   )
     return {
       error:
         "The receipt message could not be entered exactly. No message was sent.",
+      sent: false,
     };
   const deadline = Date.now() + 10000;
   for (;;) {
+    const currentEditors = [...document.querySelectorAll(selector)].filter(
+      (editor) => editor.isContentEditable && editor.getClientRects().length,
+    );
+    if (
+      (expectedUrl && location.href !== expectedUrl) ||
+      currentEditors.length !== 1 ||
+      currentEditors[0] !== composer ||
+      composer.innerText.replace(/\r\n/g, "\n").trimEnd() !== marker.trimEnd()
+    )
+      return {
+        error:
+          "The receiving page or receipt draft changed. No message was sent.",
+        sent: false,
+      };
     const form = composer.closest("form");
     const legacySend =
       '[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="发送提示"]';
@@ -114,6 +139,7 @@ export async function sendMarker(marker, selector) {
       return {
         error:
           "ChatGPT's send button is unavailable. Inspect the destination tab before resending.",
+        sent: false,
       };
     await new Promise((resolve) => setTimeout(resolve, 100));
   }

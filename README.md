@@ -12,7 +12,7 @@ _The screenshot uses synthetic accounts and conversations. This is an unofficial
 
 ## Install
 
-1. Download `chatport-extension-v0.2.2.zip` from [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest), then unzip it into a permanent folder.
+1. Download `chatport-extension-v0.2.3.zip` from [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest), then unzip it into a permanent folder.
 2. Open `chrome://extensions` in Chrome, enable **Developer mode**, click **Load unpacked**, and select the unzipped folder containing `manifest.json`.
 3. Open ChatPort's **Details** and enable **Allow in incognito**. This lets the extension operate the destination account while keeping its login session separate.
 4. Pin ChatPort in Chrome's extension menu and click its icon to open the workspace.
@@ -26,10 +26,12 @@ This release is loaded locally; it is not listed in the Chrome Web Store. Keep t
 3. Return to ChatPort, click **Check accounts**, and confirm the two displayed accounts. Click **Load conversations**.
 4. Search by title, filter by date, named project or migration status, preview and select chats. Your selection survives filter changes.
 5. Review the receipt message and delay. Confirm that selected chats may be shared, then start. Keep the ChatPort workspace open while the batch runs. **Pause after current conversation** stops safely between chats.
-6. Open receipts to inspect results. For uncertain copies, use **Check again without resending**; optionally provide a destination `https://chatgpt.com/c/...` URL.
+6. Open receipts to inspect results. **Stopped** attempts that never sent a message offer **Retry this conversation**. Retries retain the original receipt marker, check for a saved copy first and reuse the receiving tab when available. If a private copy already exists, enter its `https://chatgpt.com/c/...` URL to check the original text and continue that copy. For uncertain sends, use **Check again without resending**.
 7. Download receipts. After checking the copies, you can revoke source links in ChatGPT **Settings → Data controls → Shared links**. Source conversations remain in place.
 
-Closing or reloading the workspace interrupts its runner. Saved receiving attempts become **Needs checking** on reopening, and are never resent automatically. On a browser restart, reopen both account windows and sign in to the destination again: incognito authentication is not retained after all incognito windows close. Receipts remain in the extension's local storage.
+Closing or reloading the workspace interrupts its runner. Attempts known to have stopped before sending remain retryable; possible sends become **Needs checking** and are never resent automatically. Selection shows which conversations will run, need checking or are already verified. Previously stopped loading/composer failures from 0.2.1–0.2.2 are recognized as retryable on upgrade. On a browser restart, reopen both account windows and sign in to the destination again: incognito authentication is not retained after all incognito windows close. Receipts remain in the extension's local storage.
+
+Receiving waits for a usable message editor, rather than the entire browser load event. Slow images or other page resources no longer hold up a ready editor. Conversation catalog loading is unchanged.
 
 ## Why the extension?
 

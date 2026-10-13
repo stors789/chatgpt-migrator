@@ -116,3 +116,26 @@ test("receipt navigation rejects a switched destination account before opening t
   );
   assert.equal(opened, false);
 });
+
+test("receipt recovery rejects another displayed account pair and a shared URL before receiving", async () => {
+  const { application, chatgpt, store } = await setup();
+  await application.request("start", {
+    ids: ["source-chat"],
+    confirmSharing: true,
+  });
+  await application.migration.task;
+  const job = store.jobs[0];
+  job.status = "failed";
+  job.sendAttempted = false;
+  await assert.rejects(
+    application.request("retry", { id: job.id, url: job.shareUrl }),
+    /not a shared link/,
+  );
+  chatgpt.target.id = "another-account";
+  await application.request("accounts");
+  await assert.rejects(
+    application.request("retry", { id: job.id }),
+    /original account pair/,
+  );
+  assert.equal(chatgpt.claims, 1);
+});

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.3 — 2026-10-14
+
+Fix receiving that waited for the whole Chrome tab to finish loading even when the shared conversation's editor was usable. Inject the editor check immediately after navigation commits and let editor readiness control receiving. Conversation catalog loading is unchanged.
+
+- Persist the receiving tab and whether a send may have happened. A confirmed pre-send failure can be retried; an uncertain send still requires checking.
+- Recognize the released loading/composer errors as pre-send failures on upgrade. Retry from the receipt or include them in a new selected batch without replacing the original marker.
+- Look for an existing saved marker before retrying, reuse an open receiving tab, and allow a supplied private-copy URL after checking its complete original text.
+- Show selected counts for runnable, uncertain and verified records, plus a visible batch-stop notice and receipt recovery guidance.
+- Preserve different editor drafts; continue a draft only when it exactly matches this receipt's original marker.
+- Stop before sending if a shared link redirects to another page, or if the receiving page/editor/draft changes while waiting for Send.
+
+Validation: 52 unit tests and 12 actual-extension synthetic browser workflows, including a permanently loading image, recovery of old failures, the original tab/marker, continuing an existing private copy, shared-link redirects and preserving drafts before and during the send wait. Real two-account compatibility still depends on the user's ChatGPT session.
+
 ## 0.2.2 — 2026-10-13
 
 Fix receiving on the current ChatGPT interface, whose editable message box has no `prompt-textarea` ID and whose send control is a form submit button. Inspect only visible editable boxes and submit inside the chosen editor's form. Keep the existing editor support, verification rules and uncertain-attempt records. Conversation catalog loading is unchanged.
