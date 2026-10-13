@@ -1,0 +1,403 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-13T10:14:15.362Z",
+  "title": "Design System: ChatPort",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Desk Paper",
+        "tonalRamp": [
+          "oklch(15% 0.00538 117.92)",
+          "oklch(26% 0.00538 117.92)",
+          "oklch(37% 0.00538 117.92)",
+          "oklch(48% 0.00538 117.92)",
+          "oklch(59% 0.00538 117.92)",
+          "oklch(70% 0.00538 117.92)",
+          "oklch(82% 0.00538 117.92)",
+          "oklch(95% 0.00538 117.92)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White Surface",
+        "tonalRamp": [
+          "oklch(15% 0.00000 0.00)",
+          "oklch(26% 0.00000 0.00)",
+          "oklch(37% 0.00000 0.00)",
+          "oklch(48% 0.00000 0.00)",
+          "oklch(59% 0.00000 0.00)",
+          "oklch(70% 0.00000 0.00)",
+          "oklch(82% 0.00000 0.00)",
+          "oklch(95% 0.00000 0.00)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Green Ink",
+        "tonalRamp": [
+          "oklch(15% 0.03078 168.29)",
+          "oklch(26% 0.03078 168.29)",
+          "oklch(37% 0.03078 168.29)",
+          "oklch(48% 0.03078 168.29)",
+          "oklch(59% 0.03078 168.29)",
+          "oklch(70% 0.03078 168.29)",
+          "oklch(82% 0.03078 168.29)",
+          "oklch(95% 0.03078 168.29)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Quiet Ink",
+        "tonalRamp": [
+          "oklch(15% 0.02516 162.26)",
+          "oklch(26% 0.02516 162.26)",
+          "oklch(37% 0.02516 162.26)",
+          "oklch(48% 0.02516 162.26)",
+          "oklch(59% 0.02516 162.26)",
+          "oklch(70% 0.02516 162.26)",
+          "oklch(82% 0.02516 162.26)",
+          "oklch(95% 0.02516 162.26)"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Paper Rule",
+        "tonalRamp": [
+          "oklch(15% 0.01310 141.81)",
+          "oklch(26% 0.01310 141.81)",
+          "oklch(37% 0.01310 141.81)",
+          "oklch(48% 0.01310 141.81)",
+          "oklch(59% 0.01310 141.81)",
+          "oklch(70% 0.01310 141.81)",
+          "oklch(82% 0.01310 141.81)",
+          "oklch(95% 0.01310 141.81)"
+        ]
+      },
+      "green": {
+        "role": "primary",
+        "displayName": "Action Green",
+        "tonalRamp": [
+          "oklch(15% 0.08034 161.50)",
+          "oklch(26% 0.08034 161.50)",
+          "oklch(37% 0.08034 161.50)",
+          "oklch(48% 0.08034 161.50)",
+          "oklch(59% 0.08034 161.50)",
+          "oklch(70% 0.08034 161.50)",
+          "oklch(82% 0.08034 161.50)",
+          "oklch(95% 0.08034 161.50)"
+        ]
+      },
+      "selected": {
+        "role": "primary",
+        "displayName": "Selected Paper",
+        "tonalRamp": [
+          "oklch(15% 0.01291 141.81)",
+          "oklch(26% 0.01291 141.81)",
+          "oklch(37% 0.01291 141.81)",
+          "oklch(48% 0.01291 141.81)",
+          "oklch(59% 0.01291 141.81)",
+          "oklch(70% 0.01291 141.81)",
+          "oklch(82% 0.01291 141.81)",
+          "oklch(95% 0.01291 141.81)"
+        ]
+      },
+      "amber": {
+        "role": "secondary",
+        "displayName": "Checking Amber",
+        "tonalRamp": [
+          "oklch(15% 0.08786 73.46)",
+          "oklch(26% 0.08786 73.46)",
+          "oklch(37% 0.08786 73.46)",
+          "oklch(48% 0.08786 73.46)",
+          "oklch(59% 0.08786 73.46)",
+          "oklch(70% 0.08786 73.46)",
+          "oklch(82% 0.08786 73.46)",
+          "oklch(95% 0.08786 73.46)"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Error Red",
+        "tonalRamp": [
+          "oklch(15% 0.13884 24.02)",
+          "oklch(26% 0.13884 24.02)",
+          "oklch(37% 0.13884 24.02)",
+          "oklch(48% 0.13884 24.02)",
+          "oklch(59% 0.13884 24.02)",
+          "oklch(70% 0.13884 24.02)",
+          "oklch(82% 0.13884 24.02)",
+          "oklch(95% 0.13884 24.02)"
+        ]
+      },
+      "action-hover": {
+        "role": "primary",
+        "displayName": "Deep Action Green",
+        "tonalRamp": [
+          "oklch(15% 0.07093 161.03)",
+          "oklch(26% 0.07093 161.03)",
+          "oklch(37% 0.07093 161.03)",
+          "oklch(48% 0.07093 161.03)",
+          "oklch(59% 0.07093 161.03)",
+          "oklch(70% 0.07093 161.03)",
+          "oklch(82% 0.07093 161.03)",
+          "oklch(95% 0.07093 161.03)"
+        ]
+      },
+      "field-rule": {
+        "role": "neutral",
+        "displayName": "Field Rule",
+        "tonalRamp": [
+          "oklch(15% 0.02584 147.20)",
+          "oklch(26% 0.02584 147.20)",
+          "oklch(37% 0.02584 147.20)",
+          "oklch(48% 0.02584 147.20)",
+          "oklch(59% 0.02584 147.20)",
+          "oklch(70% 0.02584 147.20)",
+          "oklch(82% 0.02584 147.20)",
+          "oklch(95% 0.02584 147.20)"
+        ]
+      },
+      "focus-ring": {
+        "role": "primary",
+        "displayName": "Focus Green",
+        "tonalRamp": [
+          "oklch(15% 0.06380 159.08)",
+          "oklch(26% 0.06380 159.08)",
+          "oklch(37% 0.06380 159.08)",
+          "oklch(48% 0.06380 159.08)",
+          "oklch(59% 0.06380 159.08)",
+          "oklch(70% 0.06380 159.08)",
+          "oklch(82% 0.06380 159.08)",
+          "oklch(95% 0.06380 159.08)"
+        ]
+      },
+      "disabled-background": {
+        "role": "neutral",
+        "displayName": "Disabled Paper",
+        "tonalRamp": [
+          "oklch(15% 0.01194 133.38)",
+          "oklch(26% 0.01194 133.38)",
+          "oklch(37% 0.01194 133.38)",
+          "oklch(48% 0.01194 133.38)",
+          "oklch(59% 0.01194 133.38)",
+          "oklch(70% 0.01194 133.38)",
+          "oklch(82% 0.01194 133.38)",
+          "oklch(95% 0.01194 133.38)"
+        ]
+      },
+      "disabled-rule": {
+        "role": "neutral",
+        "displayName": "Disabled Rule",
+        "tonalRamp": [
+          "oklch(15% 0.01970 140.50)",
+          "oklch(26% 0.01970 140.50)",
+          "oklch(37% 0.01970 140.50)",
+          "oklch(48% 0.01970 140.50)",
+          "oklch(59% 0.01970 140.50)",
+          "oklch(70% 0.01970 140.50)",
+          "oklch(82% 0.01970 140.50)",
+          "oklch(95% 0.01970 140.50)"
+        ]
+      },
+      "disabled-ink": {
+        "role": "neutral",
+        "displayName": "Disabled Ink",
+        "tonalRamp": [
+          "oklch(15% 0.02986 155.75)",
+          "oklch(26% 0.02986 155.75)",
+          "oklch(37% 0.02986 155.75)",
+          "oklch(48% 0.02986 155.75)",
+          "oklch(59% 0.02986 155.75)",
+          "oklch(70% 0.02986 155.75)",
+          "oklch(82% 0.02986 155.75)",
+          "oklch(95% 0.02986 155.75)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The balanced introductory heading."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Ledger and migration section headings."
+      },
+      "title": {
+        "displayName": "Conversation Title",
+        "purpose": "Wrapping ledger row titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "The global reading and field baseline."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, dates, statuses, and footnotes."
+      },
+      "helper": {
+        "displayName": "Helper",
+        "purpose": "Catalog counts and supporting copy."
+      },
+      "action": {
+        "displayName": "Action",
+        "purpose": "Regular-size filled and outlined button text."
+      },
+      "control": {
+        "displayName": "Compact Control",
+        "purpose": "Quiet controls and the full-width migration action."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "ledger-state-duration",
+        "value": "0.22s",
+        "purpose": "Conversation-row background transitions; disabled for reduced motion."
+      },
+      {
+        "name": "ease-ledger",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The source easing used by conversation-row background transitions."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "medium",
+        "value": "1100px"
+      },
+      {
+        "name": "stacked",
+        "value": "800px"
+      },
+      {
+        "name": "narrow",
+        "value": "480px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The filled action used to check account connections and perform a receipt check.",
+      "html": "<button class=\"ds-button-primary\">Check accounts</button>",
+      "css": ".ds-button-primary { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.35; font-weight: 600; cursor: pointer; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: #fff; padding: 9px 14px; } .ds-button-primary:hover { background: #174e36; } .ds-button-primary:disabled { cursor: default; opacity: .5; } .ds-button-primary:disabled:hover { background: inherit; } .ds-button-primary:focus-visible { outline: 3px solid #659379; outline-offset: 3px; }"
+    },
+    {
+      "name": "Migration Button",
+      "kind": "button",
+      "refersTo": "button-migrate",
+      "description": "The full-width migration action, with its explicit disabled state.",
+      "html": "<button class=\"ds-button-migrate\">Migrate selected conversations</button>",
+      "css": ".ds-button-migrate { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.35; font-weight: 600; cursor: pointer; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: #fff; padding: 9px 14px; } .ds-button-migrate:hover { background: #174e36; } .ds-button-migrate:disabled { cursor: default; opacity: .5; } .ds-button-migrate:disabled:hover { background: inherit; } .ds-button-migrate:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } .ds-button-migrate { width: 100%; font-size: 13px; padding: 11px 9px; } .ds-button-migrate:disabled, .ds-button-migrate:disabled:hover { background: #e3e8e0; border-color: #c4cec2; color: #425448; opacity: 1; }"
+    },
+    {
+      "name": "Outlined Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "The outlined companion action used for account browser windows and catalog loading.",
+      "html": "<button class=\"ds-button-outline\">Load conversations</button>",
+      "css": ".ds-button-outline { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.35; font-weight: 600; cursor: pointer; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: #fff; padding: 9px 14px; } .ds-button-outline:hover { background: #174e36; } .ds-button-outline:disabled { cursor: default; opacity: .5; } .ds-button-outline:disabled:hover { background: inherit; } .ds-button-outline:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } .ds-button-outline { background: transparent; color: var(--ink); border-color: #a5b4a6; } .ds-button-outline:hover { background: var(--selected); }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "The compact borderless action for language, filters, selection, and closing a preview.",
+      "html": "<button class=\"ds-button-quiet\">Clear selection</button>",
+      "css": ".ds-button-quiet { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.35; font-weight: 600; cursor: pointer; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: #fff; padding: 9px 14px; } .ds-button-quiet:hover { background: #174e36; } .ds-button-quiet:disabled { cursor: default; opacity: .5; } .ds-button-quiet:disabled:hover { background: inherit; } .ds-button-quiet:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } .ds-button-quiet { background: transparent; color: var(--green); border-color: transparent; padding: 6px 8px; font-size: 13px; } .ds-button-quiet:hover { background: var(--selected); }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "The native white, lightly ruled field used for text, numeric, date, and URL entry.",
+      "html": "<input class=\"ds-field\" type=\"text\" aria-label=\"Destination conversation URL\" placeholder=\"https://chatgpt.com/c/…\">",
+      "css": ".ds-field { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.5; color: var(--ink); background: var(--surface); border: 1px solid #a5b4a6; border-radius: 5px; padding: 8px 10px; min-width: 0; caret-color: var(--green); } .ds-field::placeholder { color: #617265; } .ds-field:focus-visible { outline: 3px solid #659379; outline-offset: 3px; }"
+    },
+    {
+      "name": "Top Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "The brand, local-running note, language control, and GitHub link in one ruled strip.",
+      "html": "<header class=\"ds-nav\"><a class=\"ds-brand\" href=\"#\"><svg viewBox=\"0 0 32 32\" aria-hidden=\"true\"><path d=\"M5 9h18m-5-5 5 5-5 5M27 23H9m5-5-5 5 5 5\"/></svg>ChatPort</a><span class=\"ds-local\">Runs on your computer</span><button class=\"ds-language\">中文</button><a class=\"ds-external\" href=\"https://github.com/stors789/chatgpt-migrator\">GitHub <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></a></header>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 24px; max-width: 1440px; margin: auto; padding: 24px 40px; border-bottom: 1px solid var(--rule); background: var(--paper); color: var(--ink); font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; line-height: 1.5; } .ds-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 23px; color: var(--ink); text-decoration: none; letter-spacing: -.03em; } .ds-brand svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .ds-local { color: var(--muted); font-size: 13px; flex: 1; } .ds-language { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.35; font-weight: 600; cursor: pointer; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: #fff; padding: 9px 14px; } .ds-language:hover { background: #174e36; } .ds-language:disabled { cursor: default; opacity: .5; } .ds-language:disabled:hover { background: inherit; } .ds-language:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } .ds-language { background: transparent; color: var(--green); border-color: transparent; padding: 6px 8px; font-size: 13px; } .ds-language:hover { background: var(--selected); } .ds-external { color: var(--green); font-size: 13px; text-underline-offset: 4px; } .ds-external:hover { text-decoration-thickness: 2px; } .ds-external svg { width: 13px; height: 13px; vertical-align: -2px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; } .ds-brand:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } .ds-external:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } @media (max-width: 1100px) { .ds-nav { padding: 20px 24px; } } @media (max-width: 800px) { .ds-nav { gap: 14px; } .ds-local { font-size: 12px; } } @media (max-width: 480px) { .ds-nav { padding: 16px 18px; } .ds-brand { font-size: 21px; } .ds-brand svg { width: 26px; } .ds-local { display: none; } .ds-language { margin-left: auto; } .ds-external { font-size: 12px; } }"
+    },
+    {
+      "name": "Evidence Status",
+      "kind": "custom",
+      "refersTo": "status",
+      "description": "An inline dot with readable neutral, verified, or uncertain status text.",
+      "html": "<span class=\"ds-status\">Not migrated</span> <span class=\"ds-status ds-verified\">Verified</span> <span class=\"ds-status ds-needs-review\">Needs checking</span>",
+      "css": ".ds-status { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 12px; line-height: 1.5; white-space: nowrap; color: var(--muted); display: inline-flex; align-items: center; gap: 5px; max-width: 100%; } .ds-status:before { content: \"\"; width: 6px; height: 6px; background: #6d7e71; border-radius: 50%; flex: none; } .ds-status.ds-verified { color: var(--green); } .ds-status.ds-verified:before { background: var(--green); } .ds-status.ds-needs-review { color: var(--amber); } .ds-status.ds-needs-review:before { background: var(--amber); }"
+    },
+    {
+      "name": "Selection Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "The flat migration desk panel with a real selected-count square and an expandable selected list.",
+      "html": "<aside class=\"ds-panel\"><div class=\"ds-panel-header\"><h2>Ready to move</h2><span>2</span></div><p class=\"ds-panel-description\">2 selected</p><details class=\"ds-selected\"><summary>Selected conversations</summary><ul><li>Research notes on mitochondrial dynamics</li><li>A weekend in Kyoto</li></ul></details></aside>",
+      "css": ".ds-panel { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.5; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 22px; } .ds-panel-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; } .ds-panel-header h2 { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: -.025em; } .ds-panel-header span { display: flex; align-items: center; justify-content: center; min-width: 31px; height: 31px; border-radius: 6px; background: var(--selected); color: var(--green); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; } .ds-panel-description { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; } .ds-selected { margin-top: 14px; font-size: 12px; } .ds-selected summary { cursor: pointer; color: var(--green); padding: 4px 0; } .ds-selected ul { padding-left: 18px; max-height: 150px; overflow: auto; color: var(--muted); } .ds-selected li { padding: 3px 0; overflow-wrap: anywhere; } .ds-selected summary:focus-visible { outline: 3px solid #659379; outline-offset: 3px; }"
+    },
+    {
+      "name": "Conversation Ledger Row",
+      "kind": "custom",
+      "refersTo": "ledger-row",
+      "description": "A selected, ruled conversation row with a separate checkbox, preview title, metadata, status, and receipt action.",
+      "html": "<div class=\"ds-row ds-selected-row\"><input class=\"ds-row-check\" type=\"checkbox\" checked aria-label=\"Select Research notes on mitochondrial dynamics\"><button class=\"ds-row-title\"><strong>Research notes on mitochondrial dynamics</strong><span>Oct 11, 2026 · Research &amp; writing</span></button><span class=\"ds-row-status\">Verified</span><button class=\"ds-row-receipt\">Receipt</button></div>",
+      "css": ".ds-row { display: flex; align-items: center; gap: 12px; padding: 14px 8px; border-bottom: 1px solid var(--rule); transition: background .22s var(--ease); min-height: 72px; color: var(--ink); font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.5; } .ds-row:hover { background: #f0f3ed; } .ds-row.ds-selected-row { background: var(--selected); } .ds-row-check { width: 17px; height: 17px; flex: none; padding: 0; cursor: pointer; accent-color: var(--green); } .ds-row-title { flex: 1; text-align: left; border: 0; border-radius: 6px; background: transparent; color: var(--ink); padding: 0; min-width: 0; cursor: pointer; font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; line-height: 1.35; } .ds-row-title:hover { background: transparent; text-decoration: underline; text-underline-offset: 3px; } .ds-row-title strong { display: block; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; } .ds-row-title span { display: block; font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; } .ds-row-status { font-size: 12px; white-space: nowrap; color: var(--green); display: inline-flex; align-items: center; gap: 5px; } .ds-row-status:before { content: \"\"; width: 6px; height: 6px; background: var(--green); border-radius: 50%; flex: none; } .ds-row-receipt { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.35; font-weight: 600; cursor: pointer; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: #fff; padding: 9px 14px; } .ds-row-receipt:hover { background: #174e36; } .ds-row-receipt:disabled { cursor: default; opacity: .5; } .ds-row-receipt:disabled:hover { background: inherit; } .ds-row-receipt:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } .ds-row-receipt { background: transparent; color: var(--green); border-color: transparent; padding: 5px; font-size: 12px; } .ds-row-receipt:hover { background: var(--selected); } .ds-row-check:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } .ds-row-title:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } @media (max-width: 1100px) { .ds-row-receipt { display: none; } } @media (max-width: 800px) { .ds-row-receipt { display: block; } } @media (max-width: 480px) { .ds-row { gap: 9px; padding: 13px 3px; } .ds-row-title strong { font-size: 13px; } .ds-row-receipt { max-width: 50px; padding: 4px; } } @media (prefers-reduced-motion: reduce) { .ds-row { transition: none; } }"
+    },
+    {
+      "name": "Conversation Preview",
+      "kind": "custom",
+      "refersTo": "preview",
+      "description": "The flat adjacent reading panel, with muted role labels and ruled, wrapping message blocks.",
+      "html": "<section class=\"ds-preview\"><div class=\"ds-preview-heading\"><h2>Research notes on mitochondrial dynamics</h2><button class=\"ds-preview-close\">Close preview</button></div><article class=\"ds-preview-message\"><strong>You</strong><pre>Synthetic question for Research notes on mitochondrial dynamics</pre></article><article class=\"ds-preview-message\"><strong>ChatGPT</strong><pre>Synthetic answer for Research notes on mitochondrial dynamics</pre></article></section>",
+      "css": ".ds-preview { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.5; color: var(--ink); margin: 0; padding: 20px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); max-height: calc(100dvh - 40px); overflow: auto; } .ds-preview-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 19px; } .ds-preview-heading h2 { margin: 0; overflow-wrap: anywhere; font-size: 17px; font-weight: 700; line-height: 1.25; letter-spacing: -.025em; } .ds-preview-close { font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 15px; line-height: 1.35; font-weight: 600; cursor: pointer; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: #fff; padding: 9px 14px; } .ds-preview-close:hover { background: #174e36; } .ds-preview-close:disabled { cursor: default; opacity: .5; } .ds-preview-close:disabled:hover { background: inherit; } .ds-preview-close:focus-visible { outline: 3px solid #659379; outline-offset: 3px; } .ds-preview-close { background: transparent; color: var(--green); border-color: transparent; padding: 6px 8px; font-size: 13px; flex: none; max-width: 82px; } .ds-preview-close:hover { background: var(--selected); } .ds-preview-message { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 16px 0; border-bottom: 1px solid var(--rule); } .ds-preview-message > strong { font-size: 12px; font-weight: 700; color: var(--muted); } .ds-preview-message pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: \"DM Sans\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif; font-size: 13px; line-height: 1.8; margin: 0; max-width: 80ch; } @media (max-width: 800px) { .ds-preview { max-height: 600px; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Transfer Desk",
+    "overview": "ChatPort feels like a quiet working desk: pale paper, dark green ink, a conversation ledger, and clear white panels for the account connection, preview, and migration controls. The metaphor describes the shipped interface and the code-led direction contract; it is not a record of a user-selected visual comp.\n\nThe visual hierarchy gives most space to real conversation titles and their evidence. Compact labels, dates, and controls support this work without becoming a second visual narrative. Green identifies action and verified progress, while amber identifies outcomes that need checking. Depth comes from surface tone and thin rules.",
+    "keyCharacteristics": [
+      "Paper background with dark green text and restrained green actions.",
+      "Squared, ruled conversation rows with a pale selected state.",
+      "Flat white panels with gently curved corners.",
+      "Compact bilingual controls, tabular dates and counts, and visible keyboard focus.",
+      "An adjacent desktop preview that stacks between the ledger and migration desk on mobile."
+    ],
+    "rules": [
+      {
+        "name": "The Evidence Color Rule",
+        "body": "Keep verification and uncertainty colors attached to readable status text; a green mark alone does not communicate the result.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Voice Rule",
+        "body": "Keep UI text and conversation previews in the same font stack; hierarchy comes from the observed roles rather than a new display or mono family.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Desk Rule",
+        "body": "Preserve tone and thin rules as the depth vocabulary; the incumbent system does not use shadow elevation.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use the frontmatter palette roles for task actions, selection, evidence, and uncertainty.",
+      "**Do** keep conversation titles readable with wrapping, ruled rows, and tabular dates and counts.",
+      "**Do** preserve the visible keyboard-focus outline on interactive controls.",
+      "**Do** place an open preview beside the ledger on wide screens and between the ledger and migration desk in the stacked layout.",
+      "**Do** use tone, thin rules, and the observed radius roles to distinguish work panels."
+    ],
+    "donts": [
+      "**Don't** communicate a migration result using color without its status text.",
+      "**Don't** replace the ruled conversation ledger with independently raised cards.",
+      "**Don't** hide the selected set or its count when the user opens a preview or changes filters.",
+      "**Don't** remove the reduced-motion treatment when extending interaction states."
+    ]
+  }
+}

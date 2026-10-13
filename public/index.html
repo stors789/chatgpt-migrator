@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Select, migrate, and verify ChatGPT conversations between your personal accounts."
+    />
+    <title>ChatPort — ChatGPT conversation migration</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#conversations" data-t="skip"
+      >Skip to conversations</a
+    >
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="ChatPort home"
+        ><svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M5 9h18m-5-5 5 5-5 5M27 23H9m5-5-5 5 5 5" /></svg
+        >ChatPort</a
+      >
+      <span class="local-note" data-t="local">Runs on your computer</span>
+      <button id="language" class="quiet">中文</button>
+      <a
+        href="https://github.com/stors789/chatgpt-migrator"
+        target="_blank"
+        rel="noreferrer"
+        >GitHub
+        <svg class="external-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 17 17 7M7 7h10v10" /></svg
+      ></a>
+    </header>
+    <main>
+      <section class="intro">
+        <h1 data-t="title">Take your conversations with you.</h1>
+        <p data-t="subtitle">
+          Choose the chats you want to keep. Move them to your new account.
+          Check that they arrived.
+        </p>
+      </section>
+      <section class="accounts" aria-label="Accounts">
+        <div class="account">
+          <span class="account-label" data-t="source"
+            >From · source account</span
+          ><strong id="source-email" data-t="notConnected">Not connected</strong
+          ><button class="outline" data-open="source" data-t="openSource">
+            Open source browser
+          </button>
+        </div>
+        <svg class="account-arrow" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M4 16h23m-7-7 7 7-7 7" />
+        </svg>
+        <div class="account">
+          <span class="account-label" data-t="target"
+            >To · destination account</span
+          ><strong id="target-email" data-t="notConnected">Not connected</strong
+          ><button class="outline" data-open="target" data-t="openTarget">
+            Open destination browser
+          </button>
+        </div>
+        <div class="account-help">
+          <p data-t="loginHelp">
+            Sign in to a different personal account in each window, then check
+            the accounts.
+          </p>
+          <button id="check-accounts" data-t="checkAccounts">
+            Check accounts
+          </button>
+        </div>
+      </section>
+      <p id="notice" role="status" aria-live="polite"></p>
+      <div class="workspace" id="workspace">
+        <section
+          class="ledger"
+          id="conversations"
+          aria-labelledby="list-heading"
+        >
+          <div class="section-heading">
+            <div>
+              <h2 id="list-heading" data-t="conversations">
+                Your conversations
+              </h2>
+              <p id="catalog-count" data-t="catalogEmpty">
+                Connect a source account to load the catalog.
+              </p>
+            </div>
+            <button class="outline" id="load-catalog" data-t="loadCatalog">
+              Load conversations
+            </button>
+          </div>
+          <div class="filters">
+            <label class="search"
+              ><span class="sr-only" data-t="search">Search titles</span
+              ><svg viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="8.5" cy="8.5" r="5.5" />
+                <path d="m13 13 4 4" /></svg
+              ><input
+                type="search"
+                id="search"
+                data-placeholder="search"
+                placeholder="Search titles"
+            /></label>
+            <label
+              ><span data-t="project">Project</span
+              ><select id="project">
+                <option value="" data-t="allProjects">All projects</option>
+              </select></label
+            >
+            <label
+              ><span data-t="status">Status</span
+              ><select id="status">
+                <option value="" data-t="allStatuses">All statuses</option>
+                <option value="unmigrated" data-t="unmigrated">
+                  Not migrated
+                </option>
+                <option value="verified" data-t="verified">Verified</option>
+                <option value="needs-review" data-t="needsReview">
+                  Needs checking
+                </option>
+                <option value="archived" data-t="archived">Archived</option>
+              </select></label
+            >
+          </div>
+          <div class="date-filters">
+            <label
+              ><span data-t="fromDate">Updated from</span
+              ><input type="date" id="from-date" /></label
+            ><label
+              ><span data-t="toDate">Through</span
+              ><input type="date" id="to-date" /></label
+            ><button id="reset-filters" class="quiet" data-t="resetFilters">
+              Reset filters
+            </button>
+          </div>
+          <div class="selection-tools">
+            <label
+              ><input type="checkbox" id="select-visible" /><span
+                data-t="selectFiltered"
+                >Select filtered results</span
+              ></label
+            ><span id="visible-count"></span
+            ><button id="clear-selection" class="quiet" data-t="clearSelection">
+              Clear selection
+            </button>
+          </div>
+          <div id="rows" class="rows"></div>
+          <div id="empty" class="empty">
+            <svg viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M10 10h28v22H23l-9 7v-7h-4zM17 18h14M17 24h9" />
+            </svg>
+            <h3 data-t="emptyTitle">A fresh start, with your history.</h3>
+            <p data-t="emptyText">
+              Open the two account windows above. Your conversation titles will
+              appear here after loading.
+            </p>
+          </div>
+        </section>
+        <section
+          id="preview"
+          class="preview"
+          hidden
+          aria-labelledby="preview-title"
+        >
+          <div class="section-heading">
+            <h2 id="preview-title" tabindex="-1"></h2>
+            <button id="close-preview" class="quiet" data-t="closePreview">
+              Close preview
+            </button>
+          </div>
+          <div id="preview-content"></div>
+        </section>
+        <aside class="desk" aria-label="Selection and migration">
+          <div class="desk-header">
+            <h2 data-t="selection">Ready to move</h2>
+            <span id="selected-count">0</span>
+          </div>
+          <p id="selection-description" data-t="selectHelp">
+            Select conversations from the list. Your selection stays when you
+            change filters.
+          </p>
+          <details id="selected-details">
+            <summary data-t="selectedList">Selected conversations</summary>
+            <ul id="selected-list"></ul>
+          </details>
+          <div class="settings">
+            <label
+              ><span data-t="message">Message added to each copy</span
+              ><textarea id="message" rows="3" maxlength="1000"></textarea>
+            </label>
+            <p data-t="markerHelp">
+              A unique receipt marker is added to this message so interrupted
+              copies can be found without resending.
+            </p>
+            <label class="delay"
+              ><span data-t="delay">Seconds between conversations</span
+              ><input id="delay" type="number" min="3" max="300" value="8"
+            /></label>
+          </div>
+          <label class="sharing"
+            ><input type="checkbox" id="sharing-confirm" /><span
+              data-t="sharingConfirm"
+              >I understand that shared links can be viewed by anyone who has
+              them.</span
+            ></label
+          >
+          <button id="start" class="primary" disabled data-t="start">
+            Migrate selected conversations
+          </button>
+          <button id="pause" class="outline" hidden data-t="pause">
+            Pause after current conversation
+          </button>
+          <div class="progress-area" hidden id="progress-area">
+            <label for="progress" id="progress-label"></label
+            ><progress id="progress" max="1" value="0"></progress>
+            <p id="progress-detail"></p>
+          </div>
+          <div class="verification-note">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8 12l3 3 5-6" />
+            </svg>
+            <p data-t="verificationHelp">
+              Verified means a new chat is saved in the destination history,
+              with the original text in order and the receipt message intact.
+            </p>
+          </div>
+          <a id="export" href="/api/report" download data-t="export"
+            >Download migration receipts</a
+          >
+        </aside>
+      </div>
+
+      <footer>
+        <span data-t="footer"
+          >Personal accounts · Your original conversations stay in place.</span
+        ><span data-t="mediaNote"
+          >Text is checked automatically. Images and files need a separate
+          review.</span
+        >
+      </footer>
+    </main>
+  </body>
+</html>

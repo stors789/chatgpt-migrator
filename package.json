@@ -1,0 +1,46 @@
+{
+  "name": "@stors789/chatport",
+  "version": "0.1.0",
+  "description": "Select, migrate, and verify ChatGPT conversations between personal accounts. Local-only, no copied cookies.",
+  "type": "module",
+  "bin": {
+    "chatport": "src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js",
+    "test:e2e": "node --test test/e2e/*.test.js",
+    "check": "node scripts/check.js",
+    "format": "prettier --write src public test scripts \"*.md\" \"*.json\" .github .impeccable/surfaces .impeccable/config.json",
+    "browser:install": "playwright install chromium"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stors789/chatgpt-migrator.git"
+  },
+  "files": [
+    "src",
+    "public",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "chatgpt",
+    "migration",
+    "share-links",
+    "playwright",
+    "chat-history"
+  ],
+  "dependencies": {
+    "playwright": "1.64.0"
+  },
+  "devDependencies": {
+    "@fontsource/dm-sans": "5.3.0",
+    "prettier": "3.9.10"
+  }
+}

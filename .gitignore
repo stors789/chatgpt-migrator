@@ -1,0 +1,14 @@
+node_modules/
+.chatport/
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/build/
+test-results/
+coverage/
+*.log
+.DS_Store
+.env
+*.cookies
+*.curl
+playwright-report/
+*.tgz
