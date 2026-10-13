@@ -300,3 +300,31 @@ test("a second workspace cannot start a competing migration", async (t) => {
   assert.equal(await duplicate.locator("#start").isDisabled(), true);
   assert.equal(app.sent, 0);
 });
+
+test("unchanged progress polling preserves row controls and project options", async (t) => {
+  const app = await fixture();
+  t.after(() => app.close());
+  const page = await pageFor(app);
+  const stable = await page.evaluate(async () => {
+    const checkbox = document.querySelector('[data-select="source-0"]');
+    const project = document.querySelector(
+      '#project option[value="g-p-research"]',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    return (
+      checkbox.isConnected &&
+      project.isConnected &&
+      checkbox === document.querySelector('[data-select="source-0"]') &&
+      project ===
+        document.querySelector('#project option[value="g-p-research"]')
+    );
+  });
+  assert.equal(stable, true);
+  await page
+    .getByRole("checkbox", {
+      name: "Research notes on mitochondrial dynamics",
+      exact: true,
+    })
+    .check();
+  assert.equal(await page.locator("#selected-count").innerText(), "1");
+});

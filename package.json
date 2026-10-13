@@ -1,6 +1,6 @@
 {
   "name": "@stors789/chatport",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Chrome extension to select, migrate, and verify ChatGPT conversations between personal accounts.",
   "type": "module",
   "scripts": {

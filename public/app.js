@@ -30,6 +30,8 @@ let application;
 let previewId = null;
 let previewData = null;
 let receiptStamp = "";
+let rowsMarkup;
+let projectMarkup;
 const t = (key, values = {}) =>
   Object.entries(values).reduce(
     (text, [name, value]) => text.replaceAll(`{${name}}`, value),
@@ -155,10 +157,13 @@ function render() {
   const projects = [
     ...new Set(state.catalog.map((item) => item.project).filter(Boolean)),
   ];
-  const projectValue = $("project").value;
-  $("project").innerHTML =
-    `<option value="">${h(t("allProjects"))}</option><option value="none">${h(t("noProject"))}</option>${projects.map((id) => `<option value="${h(id)}">${h(state.catalog.find((item) => item.project === id)?.projectName || id)}</option>`).join("")}`;
-  $("project").value = projectValue;
+  const projectOptions = `<option value="">${h(t("allProjects"))}</option><option value="none">${h(t("noProject"))}</option>${projects.map((id) => `<option value="${h(id)}">${h(state.catalog.find((item) => item.project === id)?.projectName || id)}</option>`).join("")}`;
+  if (projectOptions !== projectMarkup) {
+    const projectValue = $("project").value;
+    $("project").innerHTML = projectOptions;
+    $("project").value = projectValue;
+    projectMarkup = projectOptions;
+  }
   $("catalog-count").textContent = state.catalogLoaded
     ? t("loaded", { n: state.catalog.length })
     : t("catalogEmpty");
@@ -169,7 +174,7 @@ function render() {
     items.some((item) => selected.has(item.id)) && !$("select-visible").checked;
   $("select-visible").disabled = busy || !items.length;
   $("clear-selection").disabled = busy || !selected.size;
-  $("rows").innerHTML = items
+  const rows = items
     .map((item) => {
       const job = jobOf(item.id);
       const status = job?.status || "unmigrated";
@@ -181,6 +186,10 @@ function render() {
     </div>`;
     })
     .join("");
+  if (rows !== rowsMarkup) {
+    $("rows").innerHTML = rows;
+    rowsMarkup = rows;
+  }
   $("empty").hidden = items.length > 0;
   if (!items.length) {
     $("empty").querySelector("h3").textContent = t(

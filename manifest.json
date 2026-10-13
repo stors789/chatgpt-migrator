@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatPort — ChatGPT conversation migration",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Select chats, copy them between your personal ChatGPT accounts, and verify the saved text. Runs inside Chrome.",
   "minimum_chrome_version": "120",
   "permissions": ["scripting", "storage"],

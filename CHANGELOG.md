@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 — 2026-10-13
+
+Keep unchanged conversation rows and project options in place during progress polling. This preserves checkbox interaction and open project choices; the previous unconditional replacement interrupted selection on the Linux CI browser while its window was inactive.
+
+Validation: 39 unit tests and 6 actual-extension synthetic Chromium workflows, including a regression that holds row and option nodes across polling cycles.
+
 ## 0.2.0 — 2026-10-13
 
 Chrome extension release, prompted by Google's rejection of sign-in in automation-controlled browsers.
