@@ -8,11 +8,21 @@ export const translations = {
     source: "From · source account",
     target: "To · destination account",
     notConnected: "Not connected",
-    openSource: "Open source browser",
-    openTarget: "Open destination browser",
+    openSource: "Open source · regular window",
+    openTarget: "Open destination · incognito",
     loginHelp:
-      "Sign in to a different personal account in each window, then check the accounts.",
+      "Sign in to the source in a regular window and the destination in incognito. Keep both open, then check accounts.",
     checkAccounts: "Check accounts",
+    extensionSettings: "Incognito access settings",
+    INCOGNITO_REQUIRED:
+      "Enable Allow in incognito in ChatPort's extension details, then open the destination again. Use Incognito access settings above.",
+    SIGN_IN_REQUIRED:
+      "Open both account windows and finish signing in to ChatGPT. Keep them open, then check accounts again.",
+    REGULAR_WINDOW_REQUIRED: "Open ChatPort in a regular Chrome window.",
+    extensionOnly:
+      "Open ChatPort from its Chrome extension icon. This page needs the installed extension.",
+    workspaceOpen:
+      "ChatPort is already open in another tab. Use that tab to prevent duplicate migrations.",
     conversations: "Your conversations",
     catalogEmpty: "Connect a source account to load the catalog.",
     loadCatalog: "Load conversations",
@@ -73,7 +83,7 @@ export const translations = {
     accountsReady:
       "Two different accounts are connected. Load your conversations to begin.",
     loginNext:
-      "Browser opened. Sign in there, then return and check the accounts.",
+      "Account window opened. Sign in normally, keep it open, then return and check accounts.",
     working: "Working…",
     textCount: "{n} original messages checked",
     original: "Original conversation",
@@ -86,7 +96,8 @@ export const translations = {
     mediaWarning:
       "This message includes media or attachments; review their access separately.",
     previewLoading: "Loading preview…",
-    offline: "Cannot reach ChatPort. Check that the terminal is still running.",
+    offline:
+      "ChatPort could not read its local state. Reopen the extension workspace.",
     progress: "{n} of {total} verified",
     stateSaved:
       "Progress is saved locally. Uncertain results will never be resent automatically.",
@@ -99,10 +110,21 @@ export const translations = {
     source: "从 · 原账号",
     target: "到 · 新账号",
     notConnected: "尚未连接",
-    openSource: "打开原账号浏览器",
-    openTarget: "打开新账号浏览器",
-    loginHelp: "在两个窗口分别登录不同的个人账号，然后检查账号。",
+    openSource: "原账号 · 普通窗口",
+    openTarget: "新账号 · 无痕窗口",
+    loginHelp:
+      "原账号在普通窗口登录，新账号在无痕窗口登录。保留两个窗口，再检查账号。",
     checkAccounts: "检查账号",
+    extensionSettings: "设置无痕访问权限",
+    INCOGNITO_REQUIRED:
+      "请点上方「设置无痕访问权限」，在 ChatPort 详情中开启「允许在无痕模式下运行」，再打开新账号。",
+    SIGN_IN_REQUIRED:
+      "请打开两个账号窗口并完成 ChatGPT 登录，保留窗口，再检查账号。",
+    REGULAR_WINDOW_REQUIRED: "请在普通 Chrome 窗口中打开 ChatPort。",
+    extensionOnly:
+      "请点击 Chrome 中的 ChatPort 扩展图标打开工具，此页面需要安装扩展。",
+    workspaceOpen:
+      "ChatPort 已在另一个标签页中打开，请使用那个页面，避免重复迁移。",
     conversations: "你的对话",
     catalogEmpty: "连接原账号后，即可加载对话列表。",
     loadCatalog: "加载对话",
@@ -158,7 +180,7 @@ export const translations = {
     verifying: "正在核验",
     failed: "已停止",
     accountsReady: "两个不同账号已连接，可以加载对话了。",
-    loginNext: "浏览器已打开，请在窗口中登录，再回来检查账号。",
+    loginNext: "账号窗口已打开。请正常登录并保留窗口，再回来检查账号。",
     working: "处理中…",
     textCount: "已核验 {n} 条原有消息",
     original: "原始对话",
@@ -170,7 +192,7 @@ export const translations = {
     assistant: "ChatGPT",
     mediaWarning: "这条消息包含图片或附件，请另外核对其访问权限。",
     previewLoading: "正在加载预览…",
-    offline: "无法连接 ChatPort，请确认终端里的工具仍在运行。",
+    offline: "无法读取本机进度，请重新打开扩展工作台。",
     progress: "{n} / {total} 条已核验",
     stateSaved: "进度保存在本机。待检查的结果不会自动重复发送。",
   },

@@ -1,18 +1,35 @@
 import { chromium } from "playwright";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { ChatGPT } from "../../src/chatgpt.js";
-import { Store } from "../../src/store.js";
-import { createApplication } from "../../src/server.js";
+import http from "node:http";
+import https from "node:https";
+import { execFileSync } from "node:child_process";
 import { conversation, append } from "../fixtures.js";
 
-export async function fixture() {
-  const directory = await mkdtemp(path.join(tmpdir(), "chatport-browser-"));
-  const store = new Store(directory);
-  await store.load();
-  const browser = await chromium.launch({ headless: true });
-  const chatgpt = new ChatGPT(directory);
+export async function fixture({ incognito = true } = {}) {
+  const directory = await mkdtemp(path.join(tmpdir(), "chatport-extension-"));
+  const key = path.join(directory, "key.pem");
+  const cert = path.join(directory, "cert.pem");
+  execFileSync(
+    "openssl",
+    [
+      "req",
+      "-x509",
+      "-newkey",
+      "rsa:2048",
+      "-nodes",
+      "-keyout",
+      key,
+      "-out",
+      cert,
+      "-subj",
+      "/CN=chatgpt.com",
+      "-days",
+      "1",
+    ],
+    { stdio: "ignore" },
+  );
   const source = new Map();
   const target = new Map();
   const shares = new Map();
@@ -29,37 +46,64 @@ export async function fixture() {
       `Synthetic question for ${titles[i]}`,
       `Synthetic answer for ${titles[i]}`,
     ]);
-    data.title = titles[i];
-    data.create_time = 1789862400;
-    data.update_time = 1791676800 - i * 86400;
-    data.archived = i === titles.length - 1;
-    data.gizmo_id = i === 0 || i === 2 ? "g-p-research" : null;
+    Object.assign(data, {
+      title: titles[i],
+      create_time: 1789862400,
+      update_time: 1791676800 - i * 86400,
+      archived: i === titles.length - 1,
+      gizmo_id: i === 0 || i === 2 ? "g-p-research" : null,
+    });
     source.set(data.conversation_id, data);
   }
   let mode = "success";
   let sent = 0;
-  for (const role of ["source", "target"]) {
-    const context = await browser.newContext({ locale: "en-US" });
-    await context.route("https://chatgpt.com/**", async (route) => {
-      const request = route.request();
-      const url = new URL(request.url());
-      const fulfill = (data, status = 200) =>
-        route.fulfill({
-          status,
-          contentType: "application/json",
-          body: JSON.stringify(data),
-        });
+  let sessions = 0;
+  let targetSignedIn = true;
+  const secure = https.createServer(
+    { key: await readFile(key), cert: await readFile(cert) },
+    async (request, response) => {
+      if (request.headers.host !== "chatgpt.com") {
+        response.writeHead(404);
+        response.end();
+        return;
+      }
+      const url = new URL(request.url, "https://chatgpt.com");
+      let role = request.headers.cookie?.match(
+        /chatport_fixture=(source|target)/,
+      )?.[1];
+      if (!role) {
+        role = ++sessions === 1 ? "source" : "target";
+        response.setHeader(
+          "Set-Cookie",
+          `chatport_fixture=${role}; Secure; Path=/; SameSite=Lax`,
+        );
+      }
+      let text = "";
+      for await (const chunk of request) text += chunk;
+      const body = text ? JSON.parse(text) : {};
+      const json = (data, status = 200) => {
+        response.writeHead(status, { "content-type": "application/json" });
+        response.end(JSON.stringify(data));
+      };
+      const html = (value) => {
+        response.writeHead(200, { "content-type": "text/html" });
+        response.end(value);
+      };
       if (url.pathname === "/api/auth/session")
-        return fulfill({
-          user: {
-            id: `${role}-account`,
-            email:
-              role === "source"
-                ? "source@example.test"
-                : "destination@example.test",
-          },
-          accessToken: "synthetic-test-token",
-        });
+        return json(
+          role === "target" && !targetSignedIn
+            ? {}
+            : {
+                user: {
+                  id: `${role}-account`,
+                  email:
+                    role === "source"
+                      ? "source@example.test"
+                      : "destination@example.test",
+                },
+                accessToken: "synthetic-test-token",
+              },
+        );
       if (url.pathname === "/backend-api/conversations") {
         const entries = [
           ...(role === "source" ? source : target).values(),
@@ -69,10 +113,9 @@ export async function fixture() {
             (url.searchParams.get("is_archived") === "true"),
         );
         const offset = Number(url.searchParams.get("offset") || 0);
-        const limit = Number(url.searchParams.get("limit") || 100);
-        return fulfill({
+        return json({
           items: entries
-            .slice(offset, offset + limit)
+            .slice(offset, offset + 100)
             .map((item) => ({
               id: item.conversation_id,
               title: item.title,
@@ -84,7 +127,7 @@ export async function fixture() {
         });
       }
       if (url.pathname === "/backend-api/gizmos/snorlax/sidebar")
-        return fulfill({
+        return json({
           items: [
             {
               gizmo: {
@@ -95,7 +138,7 @@ export async function fixture() {
           ],
         });
       if (url.pathname === "/backend-api/gizmos/g-p-research/conversations")
-        return fulfill({
+        return json({
           items: [...source.values()]
             .filter((item) => item.gizmo_id)
             .map((item) => ({
@@ -108,73 +151,134 @@ export async function fixture() {
         const item = (role === "source" ? source : target).get(
           url.pathname.split("/").at(-1),
         );
-        return fulfill(item || {}, item ? 200 : 404);
+        return json(item || {}, item ? 200 : 404);
       }
       if (url.pathname === "/backend-api/share/create") {
-        const body = request.postDataJSON();
         const id = `share-${body.conversation_id}`;
         shares.set(id, structuredClone(source.get(body.conversation_id)));
-        return fulfill({ share_id: id });
+        return json({ share_id: id });
       }
-      if (url.pathname.startsWith("/backend-api/share/")) return fulfill({});
+      if (url.pathname.startsWith("/backend-api/share/")) return json({});
       if (
         url.pathname === "/backend-api/conversation" &&
-        request.method() === "POST"
+        request.method === "POST"
       ) {
-        const { shareId, message } = request.postDataJSON();
-        const data = structuredClone(shares.get(shareId));
-        data.conversation_id = `target-${++sent}`;
-        data.create_time = Date.now() / 1000;
-        data.update_time = data.create_time;
-        data.archived = false;
-        append(data, message);
+        if (role !== "target")
+          return json({ error: "Wrong account received the chat" }, 403);
+        const data = structuredClone(shares.get(body.shareId));
+        Object.assign(data, {
+          conversation_id: `target-${++sent}`,
+          create_time: Date.now() / 1000,
+          update_time: Date.now() / 1000,
+          archived: false,
+        });
+        append(data, body.message);
         append(data, "OK", "assistant");
-        if (mode === "success") target.set(data.conversation_id, data);
-        else {
-          const broken = structuredClone(data);
-          broken.mapping["message-1"].message.content.parts = ["Changed text"];
-          target.set(data.conversation_id, broken);
-        }
-        return fulfill({ id: data.conversation_id });
+        if (mode === "changed-history")
+          data.mapping["message-1"].message.content.parts = ["Changed text"];
+        target.set(data.conversation_id, data);
+        return json({ id: data.conversation_id });
       }
       if (url.pathname.startsWith("/share/")) {
         const shareId = url.pathname.split("/").at(-1);
-        const html = `<!doctype html><html><body><p>This is a synthetic shared conversation for automated tests.</p><div id="prompt-textarea" contenteditable="true" role="textbox"></div><button data-testid="send-button" aria-label="Send prompt">Send</button><script>document.querySelector('button').onclick=async()=>{const response=await fetch('/backend-api/conversation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({shareId:${JSON.stringify(shareId)},message:document.querySelector('#prompt-textarea').innerText})});const data=await response.json();history.replaceState({},'', '/c/'+data.id);};</script></body></html>`;
-        return route.fulfill({ contentType: "text/html", body: html });
+        return html(
+          `<!doctype html><html><body><p>Synthetic shared conversation</p><div id="prompt-textarea" contenteditable="true" role="textbox"></div><button data-testid="send-button" aria-label="Send prompt">Send</button><script>document.querySelector('button').onclick=async()=>{const response=await fetch('/backend-api/conversation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({shareId:${JSON.stringify(shareId)},message:document.querySelector('#prompt-textarea').innerText})});const data=await response.json();history.replaceState({},'', '/c/'+data.id);};</script></body></html>`,
+        );
       }
-      return route.fulfill({
-        contentType: "text/html",
-        body: "<!doctype html><html><body>Synthetic personal account</body></html>",
-      });
-    });
-    const page = await context.newPage();
-    await page.goto("https://chatgpt.com");
-    chatgpt.sessions[role] = { context, api: page };
-  }
-  const application = createApplication(store, chatgpt, {
-    verificationDelays: [0],
-  });
-  await new Promise((resolve) =>
-    application.server.listen(0, "127.0.0.1", resolve),
+      return html(
+        "<!doctype html><html><body>Synthetic personal account</body></html>",
+      );
+    },
   );
-  const url = `http://127.0.0.1:${application.server.address().port}`;
-  return {
-    ...application,
-    url,
-    browser,
-    store,
-    source,
-    target,
-    get sent() {
-      return sent;
-    },
-    setMode(value) {
-      mode = value;
-    },
-    async close() {
-      await browser.close();
-      await new Promise((resolve) => application.server.close(resolve));
-      await rm(directory, { recursive: true, force: true });
-    },
-  };
+  // The test-only proxy covers both real normal and incognito browser contexts.
+  // No requests go to real ChatGPT; the TLS key is generated in the temporary directory.
+  const proxy = http.createServer((_, response) => {
+    response.writeHead(404);
+    response.end();
+  });
+  const sockets = new Set();
+  proxy.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.on("error", () => {});
+    socket.on("close", () => sockets.delete(socket));
+  });
+  proxy.on("connect", (request, socket, head) => {
+    if (request.url !== "chatgpt.com:443") {
+      socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
+      return;
+    }
+    socket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+    if (head.length) socket.unshift(head);
+    secure.emit("connection", socket);
+  });
+  await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+  const extension = path.resolve("dist");
+  let context;
+  try {
+    context = await chromium.launchPersistentContext(
+      path.join(directory, "browser"),
+      {
+        channel: "chromium",
+        headless: true,
+        locale: "en-US",
+        viewport: { width: 1440, height: 1050 },
+        args: [
+          `--disable-extensions-except=${extension}`,
+          `--load-extension=${extension}`,
+          `--proxy-server=http://127.0.0.1:${proxy.address().port}`,
+          "--ignore-certificate-errors",
+          "--disable-quic",
+        ],
+      },
+    );
+    const worker =
+      context.serviceWorkers()[0] ||
+      (await context.waitForEvent("serviceworker"));
+    const id = worker.url().split("/")[2];
+    const page = await context.newPage();
+    if (incognito) {
+      await page.goto(`chrome://extensions/?id=${id}`);
+      await page.locator("#devMode").click();
+      const reloaded = context.waitForEvent("serviceworker");
+      await page.locator("#allow-incognito cr-toggle").click();
+      await reloaded;
+    }
+    const url = `chrome-extension://${id}/public/index.html`;
+    await page.goto(url);
+    return {
+      context,
+      page,
+      url,
+      source,
+      target,
+      worker,
+      get sent() {
+        return sent;
+      },
+      setMode(value) {
+        mode = value;
+      },
+      setTargetSignedIn(value) {
+        targetSignedIn = value;
+      },
+      async jobs() {
+        return page.evaluate(
+          async () =>
+            (await chrome.storage.local.get("progress")).progress?.jobs || [],
+        );
+      },
+      async close() {
+        await context.close();
+        for (const socket of sockets) socket.destroy();
+        await new Promise((resolve) => proxy.close(resolve));
+        await rm(directory, { recursive: true, force: true });
+      },
+    };
+  } catch (error) {
+    if (context) await context.close();
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => proxy.close(resolve));
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
 }

@@ -1,7 +1,10 @@
-import { createHash } from "node:crypto";
-
-const digest = (value) =>
-  createHash("sha256").update(JSON.stringify(value)).digest("hex");
+const digest = async (value) => {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+};
 
 // The active branch, not every alternative response in the mapping.
 export function messagesOf(conversation) {
@@ -47,18 +50,18 @@ export function messagesOf(conversation) {
 const textHistory = (messages) =>
   messages.map(({ role, text }) => ({ role, text }));
 
-export function snapshotOf(conversation) {
+export async function snapshotOf(conversation) {
   const messages = messagesOf(conversation);
   if (!messages.length)
     throw new Error("This conversation has no visible messages.");
   return {
-    digest: digest(textHistory(messages)),
+    digest: await digest(textHistory(messages)),
     count: messages.length,
     hasMedia: messages.some((m) => m.media),
   };
 }
 
-export function verifyCopy({
+export async function verifyCopy({
   snapshot,
   sourceId,
   targetId,
@@ -86,7 +89,7 @@ export function verifyCopy({
   const prefix = messages.slice(0, matches[0]);
   if (
     prefix.length !== snapshot.count ||
-    digest(textHistory(prefix)) !== snapshot.digest
+    (await digest(textHistory(prefix))) !== snapshot.digest
   ) {
     return fail(
       "The original text messages are incomplete, changed, or in a different order.",

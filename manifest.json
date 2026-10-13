@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "ChatPort — ChatGPT conversation migration",
+  "version": "0.2.0",
+  "description": "Select chats, copy them between your personal ChatGPT accounts, and verify the saved text. Runs inside Chrome.",
+  "minimum_chrome_version": "120",
+  "permissions": ["scripting", "storage"],
+  "host_permissions": ["https://chatgpt.com/*"],
+  "incognito": "spanning",
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open ChatPort",
+    "default_icon": {
+      "16": "public/icons/16.png",
+      "32": "public/icons/32.png"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self'; base-uri 'none'"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqjnGQLDqUzVp//tlB3jNTz2XPNkB3ZWHF4Q5XwpDJaRBpO1vF9phdwk4qfvgatcOVl//G+cNJWrDiu8rGRmaWEjdEwbTi8HL4tPP0C4QY+5wvG0Orpso+ZIc1g6zixbAM1Fj+hISePtytjtE0Ig3W3onrx2ewYKuTZJFUngWca0MGZoilrjZvIl7ZhOVJ/BmCBc/X3EdBC/0rwuy5bnhuNWJEx1oeb2F8guu0qPiaNJq4aIOPMcNKd8/gRtRsHeX1p+DENKPxKQuPpT9BOmmh1Wy/SajMXmhzcQDhiuWHCsz9OAgup8RTzWvKdj7OeX/HvzsOFQnqbw3sVSag1U/bQIDAQAB",
+  "icons": {
+    "16": "public/icons/16.png",
+    "32": "public/icons/32.png",
+    "48": "public/icons/48.png",
+    "128": "public/icons/128.png"
+  }
+}

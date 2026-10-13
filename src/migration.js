@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
-import { setTimeout as delay } from "node:timers/promises";
 import { snapshotOf } from "./proof.js";
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class Migration {
   constructor(store, chatgpt, { verificationDelays = [0, 2000, 5000] } = {}) {
@@ -69,7 +69,7 @@ export class Migration {
             j.sourceId === item.id,
         );
         if (!job) {
-          const id = randomUUID();
+          const id = crypto.randomUUID();
           job = {
             id,
             sourceId: item.id,
@@ -89,7 +89,7 @@ export class Migration {
         this.running = false;
         this.current = null;
       });
-      // run() handles job failures; a disk failure must also be reported.
+      // run() handles job failures; a storage failure must also be reported.
       this.task.catch((error) => {
         this.error = error.message;
       });
@@ -129,7 +129,7 @@ export class Migration {
             "source",
             job.sourceId,
           );
-          const snapshot = snapshotOf(source);
+          const snapshot = await snapshotOf(source);
           const shareUrl = await this.chatgpt.share(
             job.sourceId,
             source.current_node,

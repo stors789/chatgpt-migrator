@@ -81,3 +81,14 @@ export class FakeChatGPT {
     return this.copies.keys().next().value;
   }
 }
+
+export class MemoryStorage {
+  data = {};
+  async setAccessLevel() {}
+  async get(key) {
+    return structuredClone({ [key]: this.data[key] });
+  }
+  async set(value) {
+    Object.assign(this.data, structuredClone(value));
+  }
+}

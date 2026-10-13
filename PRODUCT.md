@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Delegated by the user: a local Node.js application, plain HTML/CSS/JavaScript and Playwright. No hosted backend or OpenAI API key.
+Delegated by the user: a Manifest V3 Chrome extension with plain HTML/CSS/JavaScript and native browser APIs. No runtime Node.js, hosted backend or OpenAI API key. Playwright is used only for synthetic browser tests.
 
 ## Users
 
@@ -20,7 +20,7 @@ Make selecting conversations easy and report success only when a new conversatio
 
 ## Operating Context
 
-Runs on the user's computer. Two isolated, dedicated browser profiles hold the two account sessions. Users log in directly in the browser windows. The public repository must not contain account data, browser profiles or real conversation screenshots.
+Runs on the user's computer. A normal Chrome window holds the source account session and an incognito window holds the destination. Users sign in manually in their ordinary browser. The extension requires explicit incognito access and keeps its workspace open for the runner. The public repository must not contain account data, browser profiles or real conversation screenshots.
 
 ## Capabilities and Constraints
 

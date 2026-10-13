@@ -1,8 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
-import http from "node:http";
 import { fixture } from "./browser-fixture.js";
 
 async function until(condition, timeout = 10000) {
@@ -14,12 +13,22 @@ async function until(condition, timeout = 10000) {
   }
 }
 async function pageFor(app) {
-  const context = await app.browser.newContext({
-    viewport: { width: 1440, height: 1050 },
-    locale: "en-US",
-  });
-  const page = await context.newPage();
-  await page.goto(app.url);
+  const page = app.page;
+  await page.locator('[data-open="source"]').click();
+  await page.locator('[data-open="target"]').click();
+  await until(
+    async () =>
+      await page.evaluate(async () => {
+        const { accountTabs = {} } =
+          await chrome.storage.session.get("accountTabs");
+        const tabs = await Promise.all(
+          Object.values(accountTabs).map((id) => chrome.tabs.get(id)),
+        );
+        return (
+          tabs.length === 2 && tabs.every((tab) => tab.status === "complete")
+        );
+      }),
+  );
   await page
     .getByRole("button", { name: "Check accounts", exact: true })
     .click();
@@ -80,23 +89,77 @@ test("search, filter, preview, retain selection, migrate, export, and render at 
     })
     .click();
   await until(
-    () => !app.migration.running && app.store.jobs.length === 2,
-    15000,
+    async () =>
+      (await app.jobs()).filter((job) => job.status === "verified").length ===
+      2,
+    20000,
   );
   assert.deepEqual(
-    app.store.jobs.map((job) => job.status),
+    (await app.jobs()).map((job) => job.status),
     ["verified", "verified"],
   );
   assert.equal(app.sent, 2);
   await page.reload();
   await page.getByText("2 of 2 verified", { exact: true }).waitFor();
-  const report = await fetch(`${app.url}/api/report`).then((response) =>
-    response.json(),
+  const downloaded = page.waitForEvent("download");
+  await page.locator("#export").click();
+  const report = JSON.parse(
+    await readFile(await (await downloaded).path(), "utf8"),
   );
   assert.equal(report.jobs.length, 2);
   assert.ok(report.jobs.every((job) => job.proof.count === 2));
+  await page.locator("#load-catalog").click();
+  await page.getByText("6 conversations loaded", { exact: true }).waitFor();
   const screenshotDirectory = ".impeccable/review";
   await mkdir(screenshotDirectory, { recursive: true });
+  await page
+    .getByRole("button", { name: "Receipt", exact: true })
+    .first()
+    .click();
+  const destinationId = (await app.jobs())[0].targetId;
+  await page
+    .getByRole("button", { name: "Destination copy", exact: true })
+    .click();
+  await until(async () =>
+    page.evaluate(
+      async (id) =>
+        (await chrome.tabs.query({ url: `https://chatgpt.com/c/${id}` }))
+          .length === 1,
+      destinationId,
+    ),
+  );
+  const navigationProof = await page.evaluate(async (id) => {
+    const [copy] = await chrome.tabs.query({
+      url: `https://chatgpt.com/c/${id}`,
+    });
+    const { accountTabs } = await chrome.storage.session.get("accountTabs");
+    const target = await chrome.tabs.get(accountTabs.target);
+    const [{ result: account }] = await chrome.scripting.executeScript({
+      target: { tabId: copy.id },
+      func: async () =>
+        (await (await fetch("/api/auth/session")).json()).user.id,
+    });
+    return {
+      incognito: copy.incognito,
+      sameWindow: copy.windowId === target.windowId,
+      account,
+      url: copy.url,
+    };
+  }, destinationId);
+  assert.deepEqual(navigationProof, {
+    incognito: true,
+    sameWindow: true,
+    account: "target-account",
+    url: `https://chatgpt.com/c/${destinationId}`,
+  });
+  await writeFile(
+    `${screenshotDirectory}/destination-proof.json`,
+    JSON.stringify(navigationProof, null, 2),
+  );
+  await page.screenshot({
+    path: `${screenshotDirectory}/receipt-desktop.png`,
+    fullPage: true,
+  });
   await page
     .getByRole("button", { name: /Research notes on mitochondrial dynamics/ })
     .click();
@@ -149,61 +212,91 @@ test("a new chat URL with changed history becomes uncertain; check again never s
       exact: true,
     })
     .click();
-  await until(() => !app.migration.running && app.store.jobs.length === 1);
-  assert.equal(app.store.jobs[0].status, "needs-review");
+  await until(
+    async () => (await app.jobs())[0]?.status === "needs-review",
+    20000,
+  );
+  assert.equal((await app.jobs())[0].status, "needs-review");
   await page.reload();
+  await page.locator("#load-catalog").click();
+  await page.getByText("6 conversations loaded", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Receipt", exact: true }).click();
   await page
     .getByRole("button", { name: "Check again without resending", exact: true })
     .click();
-  await until(() => !app.migration.running);
+  await until(
+    async () =>
+      !(await page.locator("#preview-content [data-recheck]").isDisabled()),
+    20000,
+  );
   assert.equal(app.sent, 1);
-  assert.equal(app.store.jobs[0].status, "needs-review");
-  const broken = app.target.get(app.store.jobs[0].targetId);
+  assert.equal((await app.jobs())[0].status, "needs-review");
+  const broken = app.target.get((await app.jobs())[0].targetId);
   broken.mapping["message-1"].message.content.parts = [
     ...app.source.get("source-1").mapping["message-1"].message.content.parts,
   ];
   await page
     .getByRole("button", { name: "Check again without resending", exact: true })
     .click();
-  await until(
-    () => !app.migration.running && app.store.jobs[0].status === "verified",
-  );
+  await until(async () => (await app.jobs())[0]?.status === "verified", 20000);
   assert.equal(app.sent, 1);
 });
 
-test("local HTTP boundary rejects foreign origins, DNS rebinding hosts and unconfirmed sharing", async (t) => {
+test("incognito access is required and the settings action opens Chrome's permission page", async (t) => {
+  const app = await fixture({ incognito: false });
+  t.after(() => app.close());
+  const page = app.page;
+  await page.locator('[data-open="target"]').click();
+  await page.getByText(/Enable Allow in incognito/).waitFor();
+  assert.equal(
+    await page.locator("#target-email").innerText(),
+    "Not connected",
+  );
+  assert.equal(app.sent, 0);
+  const opened = app.context.waitForEvent("page");
+  await page.locator("#extension-settings").click();
+  const settings = await opened;
+  await settings.waitForURL(/chrome:\/\/extensions/);
+});
+
+test("expired destination authentication clears connected identity and prevents migration", async (t) => {
   const app = await fixture();
   t.after(() => app.close());
-  const foreign = await fetch(`${app.url}/api/state`, {
-    headers: { origin: "https://evil.example" },
+  const page = await pageFor(app);
+  const tabs = await page.evaluate(async () => {
+    const { accountTabs } = await chrome.storage.session.get("accountTabs");
+    return Promise.all([
+      chrome.tabs.get(accountTabs.source),
+      chrome.tabs.get(accountTabs.target),
+    ]);
   });
-  assert.equal(foreign.status, 403);
-  const reboundStatus = await new Promise((resolve, reject) => {
-    const request = http.get(
-      `${app.url}/api/state`,
-      { headers: { Host: "evil.example" } },
-      (response) => {
-        response.resume();
-        resolve(response.statusCode);
-      },
-    );
-    request.on("error", reject);
-  });
-  assert.equal(reboundStatus, 403);
-  const noHeader = await fetch(`${app.url}/api/accounts`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: "{}",
-  });
-  assert.equal(noHeader.status, 404);
-  const unconfirmed = await fetch(`${app.url}/api/start`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-chatport": "1" },
-    body: JSON.stringify({ ids: ["source-0"] }),
-  });
-  assert.equal(unconfirmed.status, 400);
+  assert.deepEqual(
+    tabs.map((tab) => tab.incognito),
+    [false, true],
+  );
+  app.setTargetSignedIn(false);
+  await page.locator("#check-accounts").click();
+  await page
+    .getByText(/Open both account windows and finish signing in/)
+    .waitFor();
+  assert.equal(
+    await page.locator("#target-email").innerText(),
+    "Not connected",
+  );
+  assert.equal(await page.locator("#start").isDisabled(), true);
   assert.equal(app.sent, 0);
-  const traversal = await fetch(`${app.url}/%2e%2e/package.json`);
-  assert.equal(traversal.status, 404);
+});
+
+test("a second workspace cannot start a competing migration", async (t) => {
+  const app = await fixture();
+  t.after(() => app.close());
+  await pageFor(app);
+  const duplicate = await app.context.newPage();
+  await duplicate.goto(app.url);
+  await duplicate
+    .getByText(/ChatPort is already open in another tab/)
+    .waitFor();
+  assert.equal(await duplicate.locator("#check-accounts").isDisabled(), true);
+  assert.equal(await duplicate.locator("#start").isDisabled(), true);
+  assert.equal(app.sent, 0);
 });

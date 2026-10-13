@@ -1,22 +1,17 @@
-import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
-import path from "node:path";
-
 export class Store {
-  constructor(directory) {
-    this.directory = directory;
+  constructor(storage = globalThis.chrome.storage.local) {
+    this.storage = storage;
     this.jobs = [];
   }
   async load() {
-    await mkdir(this.directory, { recursive: true, mode: 0o700 });
-    try {
-      const data = JSON.parse(
-        await readFile(path.join(this.directory, "progress.json"), "utf8"),
-      );
-      if (data.version !== 1 || !Array.isArray(data.jobs))
-        throw new Error("Unsupported progress file.");
-      this.jobs = data.jobs;
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
+    await this.storage.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" });
+    const { progress } = await this.storage.get("progress");
+    if (progress !== undefined) {
+      if (progress?.version !== 1 || !Array.isArray(progress.jobs))
+        throw new Error(
+          "Unsupported progress data. Download a backup before changing extension storage.",
+        );
+      this.jobs = progress.jobs;
     }
     for (const job of this.jobs) {
       if (["opening", "sending", "verifying"].includes(job.status)) {
@@ -28,12 +23,6 @@ export class Store {
     await this.save();
   }
   async save() {
-    const temporary = path.join(this.directory, "progress.json.tmp");
-    await writeFile(
-      temporary,
-      JSON.stringify({ version: 1, jobs: this.jobs }, null, 2),
-      { mode: 0o600 },
-    );
-    await rename(temporary, path.join(this.directory, "progress.json"));
+    await this.storage.set({ progress: { version: 1, jobs: this.jobs } });
   }
 }

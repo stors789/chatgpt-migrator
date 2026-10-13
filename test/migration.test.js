@@ -1,28 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { Store } from "../src/store.js";
 import { Migration } from "../src/migration.js";
-import { FakeChatGPT } from "./fixtures.js";
+import { FakeChatGPT, MemoryStorage } from "./fixtures.js";
 
 const catalog = [{ id: "source-chat", title: "Synthetic conversation" }];
 async function setup(t) {
-  const directory = await mkdtemp(path.join(tmpdir(), "chatport-test-"));
-  t.after(() => rm(directory, { recursive: true, force: true }));
-  const store = new Store(directory);
+  const storage = new MemoryStorage();
+  const store = new Store(storage);
   await store.load();
   const api = new FakeChatGPT();
   const runner = new Migration(store, api, { verificationDelays: [0] });
-  return { store, api, runner, directory };
+  return { store, api, runner, storage };
 }
 test("successful migration persists only receipts and skips verified copies on resume", async (t) => {
-  const { runner, store, api, directory } = await setup(t);
+  const { runner, store, api, storage } = await setup(t);
   await runner.start(["source-chat"], catalog);
   await runner.task;
   assert.equal(store.jobs[0].status, "verified");
-  const saved = await readFile(path.join(directory, "progress.json"), "utf8");
+  const saved = JSON.stringify((await storage.get("progress")).progress);
   assert.ok(!saved.includes("An answer"));
   assert.ok(!saved.includes("accessToken"));
   await runner.start(["source-chat"], catalog);
@@ -164,10 +160,9 @@ test("a pre-send failure may be retried safely", async (t) => {
   assert.equal(store.jobs[0].status, "verified");
 });
 test("after a crash, receipt phases become uncertain and sharing phases remain retryable", async (t) => {
-  const { directory } = await setup(t);
-  await writeFile(
-    path.join(directory, "progress.json"),
-    JSON.stringify({
+  const { storage } = await setup(t);
+  await storage.set({
+    progress: {
       version: 1,
       jobs: [
         { status: "sending" },
@@ -175,9 +170,9 @@ test("after a crash, receipt phases become uncertain and sharing phases remain r
         { status: "opening" },
         { status: "sharing" },
       ],
-    }),
-  );
-  const restored = new Store(directory);
+    },
+  });
+  const restored = new Store(storage);
   await restored.load();
   assert.deepEqual(
     restored.jobs.map((job) => job.status),
@@ -185,7 +180,8 @@ test("after a crash, receipt phases become uncertain and sharing phases remain r
   );
 });
 test("malformed state is not silently overwritten", async (t) => {
-  const { directory } = await setup(t);
-  await writeFile(path.join(directory, "progress.json"), "{invalid");
-  await assert.rejects(new Store(directory).load());
+  const { storage } = await setup(t);
+  await storage.set({ progress: "invalid" });
+  await assert.rejects(new Store(storage).load());
+  assert.equal((await storage.get("progress")).progress, "invalid");
 });

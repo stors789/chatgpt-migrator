@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0 — 2026-10-13
+
+Chrome extension release, prompted by Google's rejection of sign-in in automation-controlled browsers.
+
+- Use ordinary Chrome sessions: regular source window and incognito destination window, with manual authentication.
+- Remove the runtime Node server and Playwright browser launcher. Release users load the unpacked extension directly.
+- Keep conversation selection, previews, strict SHA-256 text verification, persisted receipts, pause and uncertain-result recovery.
+- Save progress in trusted-context chrome.storage.local; use session storage for bound tab IDs and Web Locks for a single workspace runner.
+- Provide localized incognito-permission and sign-in recovery actions.
+- Open destination receipts in the checked destination incognito session.
+- Package only extension source and public assets; publish a stable extension identity and authored toolbar icons.
+
+Validation: 39 unit tests and 5 actual-extension Chromium workflows using synthetic HTTPS fixtures. Normal/incognito session isolation, exact receipts, false positives, no resend on recheck, receipt navigation, permission refusal, expired authentication and competing workspace prevention are covered. Real Google authentication and real two-account migration remain untested.
+
+The previous v0.1.0 code remains available under its Git tag. v0.2 does not import the old local profile directory or JSON file.
+
 ## 0.1.0 — 2026-10-13
 
 Initial public release.

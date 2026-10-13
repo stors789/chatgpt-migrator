@@ -1,131 +1,80 @@
 # ChatPort
 
-**Select, migrate, and verify your ChatGPT conversations.**
+**Pick your ChatGPT conversations. Copy them to your new account. Verify that they arrived.**
 
-[简体中文](README.zh-CN.md) · [Getting started](#getting-started) · [How verification works](#how-verification-works)
+[简体中文](README.zh-CN.md) · [Download the Chrome extension](https://github.com/stors789/chatgpt-migrator/releases/latest)
 
-ChatPort moves selected conversations between your own **personal ChatGPT accounts**, using shared links and browser continuation. Pick the chats you want, preview them, and get a receipt when their original text has been checked in the destination account.
+ChatPort is a Chrome extension for moving selected conversations between your own **personal ChatGPT accounts** through shared links. It uses your ordinary browser sessions: the source account in a regular window, the destination in an incognito window. **No terminal, Node.js, API key, cookie copying or automation browser is needed to use it.**
 
-![ChatPort migration workspace with synthetic demonstration data](docs/screenshots/desktop.png)
+![ChatPort workspace with synthetic demonstration data](docs/screenshots/desktop.png)
 
-_The screenshot uses synthetic accounts and conversations. This is an unofficial tool, not an OpenAI product._
+_The screenshot uses synthetic accounts and conversations. This is an unofficial community tool._
 
-## Why ChatPort?
+## Install
 
-- **Pick precisely:** title search, dates, project and status filters, individual checkboxes and select-all for the current filter. Selections survive filtering and page reloads.
-- **Preview before moving:** read the active conversation branch before selecting it.
-- **Sign in normally:** separate browser profiles for the two accounts. No API key, pasted cookies or copied bearer tokens.
-- **Check the result:** a new chat ID and a visible composer are not enough. The saved destination history and the original message sequence must match.
-- **Resume carefully:** verified copies are skipped. Uncertain attempts are checked without automatically resending.
-- **Stay local:** the interface, profiles and progress live on your computer. ChatPort has no hosted backend, analytics or third-party conversation storage.
-- **English and 简体中文:** switch languages in the interface.
+1. Download `chatport-extension-v0.2.0.zip` from [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest), then unzip it into a permanent folder.
+2. Open `chrome://extensions` in Chrome, enable **Developer mode**, click **Load unpacked**, and select the unzipped folder containing `manifest.json`.
+3. Open ChatPort's **Details** and enable **Allow in incognito**. This lets the extension operate the destination account while keeping its login session separate.
+4. Pin ChatPort in Chrome's extension menu and click its icon to open the workspace.
 
-## Getting started
+This release is loaded locally; it is not listed in the Chrome Web Store. Keep the unzipped folder in place. To update, replace its files in that same folder and click Reload in Chrome's Extensions page. Download receipts before uninstalling: removing an extension removes its local records.
 
-Requires **Node.js 22+** and **Google Chrome**, on Windows, macOS or Linux with a desktop session.
+## Move conversations
 
-```sh
-git clone https://github.com/stors789/chatgpt-migrator.git
-cd chatgpt-migrator
-npm ci
-npm start
-```
+1. Click **Open source · regular window**. Sign in to the source ChatGPT account normally if needed.
+2. Click **Open destination · incognito**. Sign in to a different ChatGPT account normally. Choose **Personal** in both windows and keep them open.
+3. Return to ChatPort, click **Check accounts**, and confirm the two displayed accounts. Click **Load conversations**.
+4. Search by title, filter by date, named project or migration status, preview and select chats. Your selection survives filter changes.
+5. Review the receipt message and delay. Confirm that selected chats may be shared, then start. Keep the ChatPort workspace open while the batch runs. **Pause after current conversation** stops safely between chats.
+6. Open receipts to inspect results. For uncertain copies, use **Check again without resending**; optionally provide a destination `https://chatgpt.com/c/...` URL.
+7. Download receipts. After checking the copies, you can revoke source links in ChatGPT **Settings → Data controls → Shared links**. Source conversations remain in place.
 
-Open **http://127.0.0.1:4873**.
+Closing or reloading the workspace interrupts its runner. Saved receiving attempts become **Needs checking** on reopening, and are never resent automatically. On a browser restart, reopen both account windows and sign in to the destination again: incognito authentication is not retained after all incognito windows close. Receipts remain in the extension's local storage.
 
-1. Open the source and destination browser windows. Sign in to a different personal ChatGPT account in each. Choose the **Personal** workspace in both windows.
-2. Click **Check accounts**, then **Load conversations**. The catalog includes regular, archived and accessible project chats.
-3. Search, filter, preview and select your conversations. Project chats arrive as ordinary destination chats; project organization is not recreated.
-4. Review the message and delay. Confirm that selected conversations may be shared, then start the migration.
-5. Inspect the status or open a receipt. For an uncertain result, **Check again without resending**. If you found the copy manually, paste its `https://chatgpt.com/c/...` URL into the receipt and check it.
-6. Download the receipts. After checking the destination copies, you can revoke the source share links in ChatGPT **Settings → Data controls → Shared links**. ChatPort does not delete source chats or automatically revoke links.
+## Why the extension?
 
-Keep the terminal open while using ChatPort. Press **Ctrl+C** to pause after the current operation and close the tool's browser windows. Reopen it with `npm start`; use the same accounts to see their saved receipts.
+Google can reject sign-in from [browsers controlled through software automation](https://support.google.com/accounts/answer/7675428). ChatPort 0.2 uses Chrome's extension APIs on normal user-opened sessions. It does not automate Google authentication, hide automation flags, use stealth plugins or solve verification challenges. Sign in using the method your ChatGPT account normally uses.
 
-### Use bundled Chromium instead
+## What counts as verified?
 
-The browser choice is explicit; there is no silent browser substitution.
+Before sharing, ChatPort fingerprints the **visible user and assistant text on the active branch** with SHA-256. It continues the shared chat and adds your message with a unique `[ChatPort:…]` marker. All of these must hold:
 
-```sh
-npm run browser:install
-CHATPORT_BROWSER=chromium npm start
-```
+- A destination chat ID exists and differs from the source ID.
+- It appears in the destination account's saved, unarchived history.
+- Reading it back returns that ID and an editable conversation.
+- Exactly one user message matches the complete receipt marker.
+- Every original visible text message before the marker has the same role, order, content and count.
 
-PowerShell:
+A composer, new URL, incomplete history, wrong account or missing marker cannot produce success. Limited persistence checks do not resend messages. Both account identities are rechecked during the run.
 
-```powershell
-$env:CHATPORT_BROWSER = "chromium"
-npm start
-```
+Images, uploads, generated files, tool results and alternative historical branches need separate review. Media-bearing messages are flagged. Project chats arrive as ordinary chats; project files, settings and organization are not recreated. Subscriptions, memories, custom GPTs and account settings are outside scope. Business, Enterprise and Edu cross-workspace transfers are not supported.
 
-### Local configuration
+## Permissions and privacy
 
-| Variable            | Default       | Purpose                           |
-| ------------------- | ------------- | --------------------------------- |
-| `CHATPORT_PORT`     | `4873`        | Local interface port              |
-| `CHATPORT_DATA_DIR` | `~/.chatport` | Profiles and atomic JSON receipts |
-| `CHATPORT_BROWSER`  | `chrome`      | `chrome` or installed `chromium`  |
+- `https://chatgpt.com/*`: read the selected catalog and chats, create share links and continue copies in the bound account tabs.
+- `scripting`: run those operations inside the bound ChatGPT tabs.
+- `storage`: save receipt records and bound tab IDs locally. No browser sync storage is used.
+- **Allow in incognito**: access the destination session. The workspace and receipts remain in the regular extension context.
 
-Browser profiles contain authenticated sessions. Keep the data directory private. Progress records contain chat titles, share URLs and receipt markers, but no original message transcript or copied authentication tokens. The server binds only to `127.0.0.1` and rejects foreign origins and unexpected Host headers.
-
-Only one process can use a data directory at a time. After a forced crash, a stale `run.lock` may remain. Stop and confirm that no ChatPort process is running before removing that file. Do not remove it while another run is active.
-
-## How verification works
-
-Before sharing, ChatPort fingerprints the **visible user and assistant text on the active branch**. It then continues the shared chat and adds the chosen message with a unique `[ChatPort:…]` receipt marker.
-
-A conversation is marked **Verified** only when:
-
-1. A destination conversation ID exists and differs from the source ID.
-2. That ID appears in the destination account's saved, unarchived history.
-3. Reading it back returns the same ID and an editable conversation.
-4. Exactly one user message contains the complete receipt message.
-5. Every original visible text message before that marker has the same role, order, content and count as the source snapshot.
-
-A missing marker, incomplete history, wrong account, read-only share, rate limit or uncertain browser outcome prevents success. A few bounded checks allow for persistence delay. They do **not** resend messages. The source and destination account identities are checked again during the run.
-
-The receipt attests to the active **text** history. It does not guarantee that images, uploads, generated files, tool results or historical alternative branches remain accessible. Media-bearing messages are flagged for manual review.
-
-### Status meanings
-
-| Status                                | Meaning                              | Next step                                  |
-| ------------------------------------- | ------------------------------------ | ------------------------------------------ |
-| Queued                                | Selected, no receiving attempt yet   | Start or resume                            |
-| Creating share / Receiving / Checking | Current operation                    | Wait, or request a pause                   |
-| Verified                              | Saved copy and original text checked | Open the destination copy                  |
-| Stopped                               | Failed before receiving started      | Resolve the error, then resume             |
-| Needs checking                        | Receiving may have created a copy    | Recheck the receipt; do not blindly resend |
-
-If no receipt marker can be found, leave the result uncertain and inspect the destination browser. A copy created before the marker was sent will not pass automatically; its missing marker must be resolved before it can be certified. This avoids turning a browser glitch into duplicate chats.
-
-## Limits and troubleshooting
-
-- **Unofficial web integration.** ChatGPT's session, catalog and share APIs may change. This is not a documented account import API.
-- **Personal accounts only.** Business, Enterprise and Edu cross-workspace transfer is outside scope. Account settings, memories, subscriptions, custom GPTs and project files are not moved.
-- **Shared content is accessible to link holders.** Review the selected conversations before creating links. Link revocation does not delete copies already saved by a recipient. See [OpenAI's sharing documentation](https://help.openai.com/en/articles/7925741-sharing-conversations-and-scheduled-tasks-in-chatgpt).
-- **Login or captcha:** handle it yourself in the visible browser window. ChatPort does not solve challenges or use stealth plugins. If the fresh profile cannot sign in, stop; do not disable browser protections.
-- **Rate limiting:** pause and wait, then raise the per-conversation delay. Do not run parallel migrations.
-- **Catalog errors:** no partial catalog is silently presented as complete. A changed response format stops loading with an error.
-- **Changed history:** inspect both chats. A copy with altered or missing text remains uncertain even if it has a new URL.
-
-OpenAI's [export-and-upload workaround](https://help.openai.com/en/articles/9106926-transfer-exported-conversations-between-chatgpt-accounts) provides a reference file in a new chat; ChatPort uses shared-conversation continuation to create individual copies instead.
+There is no local HTTP server, hosted backend, analytics, cookie permission, debugger permission or Google-site access. Authentication tokens are used only inside their ChatGPT tab and are not returned to the workspace. Records contain chat titles, share URLs, fingerprints and receipt messages; original message transcripts are not persisted. Preview text exists in workspace memory while displayed. Downloaded receipts may contain sensitive titles and share links: keep them private.
 
 ## Development
 
+Node.js 22+ is required only to build and test source code.
+
 ```sh
 npm ci
+npm run build
 npm run check
 npm test
 npm run browser:install
 npm run test:e2e
 ```
 
-Unit tests cover active-branch fingerprints, exact prefix matching, false positives, account changes, interruption, recovery and concurrency. Browser tests exercise the real UI, share/continue automation, API verification, failed verification, receipt recovery, responsive layout and the local HTTP boundary using **synthetic network fixtures**. They do not log into real ChatGPT accounts. Live account compatibility requires a separate manual smoke test; passing fixtures is not a guarantee against future ChatGPT changes.
+Load the generated `dist/` folder as the extension. Runtime code uses platform APIs; Playwright is a development-only test dependency.
 
-To report a problem, include the step and error message. Do not upload browser profiles, cookies, tokens, real transcripts or an unredacted receipts file.
+Unit tests cover strict verification, account changes, pause, concurrency and interrupted attempts. Browser tests load the actual Manifest V3 extension in Chromium and use **synthetic ChatGPT responses** in real regular/incognito contexts. They do not log into real accounts or establish future compatibility with ChatGPT's unofficial web APIs. A real two-account smoke test is still required before migrating important chats.
 
-## Acknowledgements and license
+The older Node/Playwright implementation is preserved in the `v0.1.0` Git tag. Version 0.2 does not read its `~/.chatport` directory. The receipt format and SHA-256 verification rules are retained.
 
-The workflow was inspired by [jasong-03/chatgpt-conversation-migrate](https://github.com/jasong-03/chatgpt-conversation-migrate). That repository has no declared license; **no source code from it was copied**. ChatPort is an independent implementation using [Playwright](https://playwright.dev/) and Node.js platform libraries.
-
-ChatPort is [MIT licensed](LICENSE). The bundled DM Sans font is licensed under the [SIL Open Font License](public/fonts/OFL.txt). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT licensed. See [Third-party notices](THIRD_PARTY_NOTICES.md) and [Security](SECURITY.md). Contributions should keep selection easy and verification strict.

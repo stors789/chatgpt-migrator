@@ -1,3 +1,6 @@
+import { Store } from "../src/store.js";
+import { ChatGPT } from "../src/chatgpt.js";
+import { createApplication } from "../src/application.js";
 import { translations } from "./i18n.js";
 
 const $ = (id) => document.getElementById(id);
@@ -22,7 +25,8 @@ let state = {
 };
 let selected = new Set();
 let sourceKey = "";
-let localBusy = false;
+let localBusy = true;
+let application;
 let previewId = null;
 let previewData = null;
 let receiptStamp = "";
@@ -61,20 +65,9 @@ function notice(text, error = false) {
   $("notice").setAttribute("role", error ? "alert" : "status");
 }
 
-async function api(path, body) {
-  const response = await fetch(
-    `/api/${path}`,
-    body
-      ? {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-chatport": "1" },
-          body: JSON.stringify(body),
-        }
-      : {},
-  );
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-  return data;
+async function api(route, body) {
+  if (!application) throw new Error(t("extensionOnly"));
+  return application.request(route, body);
 }
 
 async function refresh() {
@@ -107,7 +100,7 @@ async function action(operation) {
     await operation();
     await refresh();
   } catch (error) {
-    notice(error.message, true);
+    notice(translations[language][error.code] || error.message, true);
     await refresh().catch(() => {});
   } finally {
     localBusy = false;
@@ -288,8 +281,11 @@ function receipt(id, focus = true) {
   if (!job) return;
   const stamp = JSON.stringify({ job, language });
   if (!focus && receiptStamp === stamp) {
-    const button = $("preview-content").querySelector("[data-recheck]");
-    if (button) button.disabled = state.running || localBusy;
+    $("preview-content")
+      .querySelectorAll("button")
+      .forEach((button) => {
+        button.disabled = state.running || localBusy;
+      });
     return;
   }
   receiptStamp = stamp;
@@ -303,7 +299,7 @@ function receipt(id, focus = true) {
     `<div class="receipt"><p class="status ${h(job.status)}">${h(t(job.status === "needs-review" ? "needsReview" : job.status))}</p>
     ${job.proof ? `<p>${h(t("textCount", { n: job.proof.count }))} · ${h(new Date(job.proof.checkedAt).toLocaleString())}</p>` : ""}
     ${job.error ? `<p class="error">${h(job.error)}</p>` : ""}
-    <p><a href="https://chatgpt.com/c/${encodeURIComponent(job.sourceId)}" target="_blank" rel="noreferrer">${h(t("original"))}</a>${job.targetId ? ` · <a href="https://chatgpt.com/c/${encodeURIComponent(job.targetId)}" target="_blank" rel="noreferrer">${h(t("destination"))}</a>` : ""}</p>
+    <p><a href="https://chatgpt.com/c/${encodeURIComponent(job.sourceId)}" target="_blank" rel="noreferrer">${h(t("original"))}</a>${job.targetId ? ` · <button class="text-link" data-destination="${h(id)}" ${state.running || localBusy ? "disabled" : ""}>${h(t("destination"))}</button>` : ""}</p>
     ${job.snapshot?.hasMedia ? `<p class="media-warning">${h(t("mediaNote"))}</p>` : ""}
     <details><summary>${h(t("markerLabel"))}</summary><pre>${h(job.marker)}</pre></details>
     ${job.status === "needs-review" ? `<label class="recover"><span>${h(t("destinationUrl"))}</span><input type="url" id="destination-url" placeholder="https://chatgpt.com/c/…" value="${h(previousUrl)}"></label><button data-recheck="${h(id)}" ${state.running || localBusy ? "disabled" : ""}>${h(t("checkAgain"))}</button>` : ""}
@@ -401,7 +397,7 @@ $("pause").addEventListener("click", async () => {
     await api("pause", {});
     await refresh();
   } catch (error) {
-    notice(error.message, true);
+    notice(translations[language][error.code] || error.message, true);
   }
 });
 $("close-preview").addEventListener("click", () => {
@@ -411,6 +407,15 @@ $("close-preview").addEventListener("click", () => {
   $("list-heading").scrollIntoView({ block: "nearest" });
 });
 $("preview-content").addEventListener("click", (event) => {
+  const destination =
+    event.target.closest("[data-destination]")?.dataset.destination;
+  if (destination) {
+    action(async () => {
+      await api("destination", { id: destination });
+      notice("");
+    });
+    return;
+  }
   const id = event.target.closest("button")?.dataset.recheck;
   if (id)
     action(async () => {
@@ -419,15 +424,62 @@ $("preview-content").addEventListener("click", (event) => {
       receipt(id, false);
     });
 });
-translate();
-refresh().catch(() => notice(t("offline"), true));
-// Only one outstanding refresh; polling keeps progress visible after a page reload.
-async function poll() {
-  try {
-    if (!localBusy) await refresh();
-  } catch {
-    notice(t("offline"), true);
+$("extension-settings").addEventListener("click", () =>
+  chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` }),
+);
+$("export").addEventListener("click", async (event) => {
+  event.preventDefault();
+  const report = await api("report");
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "chatport-receipts.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+window.addEventListener("beforeunload", (event) => {
+  if (application?.migration.running) {
+    event.preventDefault();
+    event.returnValue = "";
   }
-  setTimeout(poll, 2000);
+});
+translate();
+render();
+if (!globalThis.chrome?.storage?.local) {
+  notice(t("extensionOnly"), true);
+} else {
+  navigator.locks
+    .request("chatport-workspace", { ifAvailable: true }, async (lock) => {
+      if (!lock) {
+        notice(t("workspaceOpen"), true);
+        return;
+      }
+      const store = new Store();
+      await store.load();
+      application = createApplication(store, new ChatGPT());
+      const { accountTabs = {} } =
+        await chrome.storage.session.get("accountTabs");
+      if (accountTabs.source && accountTabs.target) {
+        try {
+          await api("accounts");
+        } catch (error) {
+          notice(translations[language][error.code] || error.message, true);
+        }
+      }
+      localBusy = false;
+      await refresh();
+      async function poll() {
+        try {
+          if (!localBusy) await refresh();
+        } catch (error) {
+          notice(error.message, true);
+        }
+        setTimeout(poll, 1000);
+      }
+      setTimeout(poll, 1000);
+      await new Promise(() => {});
+    })
+    .catch((error) => notice(error.message, true));
 }
-setTimeout(poll, 2000);

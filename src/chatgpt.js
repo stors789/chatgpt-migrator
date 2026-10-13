@@ -1,113 +1,138 @@
-import path from "node:path";
-import { chromium } from "playwright";
 import { conversationIdFromUrl, messagesOf, verifyCopy } from "./proof.js";
+import { browserRequest, prepareComposer, sendMarker } from "./page.js";
 
 const ORIGIN = "https://chatgpt.com";
-const roles = new Set(["source", "target"]);
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const loginError = (code, message) =>
+  Object.assign(new Error(message), { code });
 
 export class ChatGPT {
-  constructor(directory, { browser = "chrome" } = {}) {
-    this.directory = directory;
-    this.browser = browser;
-    this.sessions = {};
+  constructor(api = globalThis.chrome) {
+    this.api = api;
+    this.receiving = new Map();
   }
 
   async open(role) {
-    if (!roles.has(role)) throw new Error("Unknown account role.");
-    if (this.sessions[role]) {
-      await this.sessions[role].api.bringToFront();
+    if (!["source", "target"].includes(role))
+      throw new Error("Unknown account role.");
+    if (
+      role === "target" &&
+      !(await this.api.extension.isAllowedIncognitoAccess())
+    )
+      throw loginError(
+        "INCOGNITO_REQUIRED",
+        "Allow ChatPort in incognito mode in Chrome's extension details, then open the destination account again.",
+      );
+    const { accountTabs = {} } =
+      await this.api.storage.session.get("accountTabs");
+    const existing =
+      accountTabs[role] &&
+      (await this.api.tabs.get(accountTabs[role]).catch(() => null));
+    if (existing && existing.incognito === (role === "target")) {
+      await this.api.windows.update(existing.windowId, { focused: true });
+      await this.api.tabs.update(existing.id, { active: true });
       return;
     }
-    const context = await chromium.launchPersistentContext(
-      path.join(this.directory, "profiles", role),
-      {
-        ...(this.browser === "chrome" ? { channel: "chrome" } : {}),
-        headless: false,
-        viewport: { width: 1280, height: 880 },
-        locale: "en-US",
-      },
-    );
-    const api = context.pages()[0] || (await context.newPage());
-    this.sessions[role] = { context, api };
-    context.on("close", () => {
-      delete this.sessions[role];
-    });
-    await api.goto(ORIGIN, { waitUntil: "domcontentloaded" });
-  }
-
-  page(role) {
-    const api = this.sessions[role]?.api;
-    if (!api || api.isClosed())
-      throw new Error(`Open and sign in to the ${role} browser first.`);
-    if (new URL(api.url()).origin !== ORIGIN)
-      throw new Error(`Finish signing in to the ${role} browser first.`);
-    return api;
-  }
-
-  async identity(role) {
-    const page = this.page(role);
-    const result = await page.evaluate(async () => {
-      const response = await fetch("/api/auth/session", {
-        credentials: "include",
-        signal: AbortSignal.timeout(30000),
+    let tab;
+    if (role === "target") {
+      const window = await this.api.windows.create({
+        url: ORIGIN,
+        incognito: true,
+        width: 1280,
+        height: 880,
       });
-      if (!response.ok) return null;
-      const session = await response.json();
-      if (!session.user?.id || !session.accessToken) return null;
-      return {
-        id: session.user.id,
-        email: session.user.email || session.user.name || session.user.id,
-      };
+      tab = window.tabs[0];
+    } else {
+      const window = await this.api.windows.getCurrent();
+      if (window.incognito)
+        throw loginError(
+          "REGULAR_WINDOW_REQUIRED",
+          "Open ChatPort in a regular Chrome window.",
+        );
+      tab = await this.api.tabs.create({ url: ORIGIN, windowId: window.id });
+    }
+    accountTabs[role] = tab.id;
+    await this.api.storage.session.set({ accountTabs });
+  }
+
+  async tab(role) {
+    if (!["source", "target"].includes(role))
+      throw new Error("Unknown account role.");
+    const { accountTabs = {} } =
+      await this.api.storage.session.get("accountTabs");
+    const tab =
+      accountTabs[role] &&
+      (await this.api.tabs.get(accountTabs[role]).catch(() => null));
+    if (
+      !tab ||
+      tab.incognito !== (role === "target") ||
+      !tab.url?.startsWith(`${ORIGIN}/`)
+    )
+      throw loginError(
+        "SIGN_IN_REQUIRED",
+        `Open the ${role} account window and finish signing in to ChatGPT, then check accounts.`,
+      );
+    return tab;
+  }
+
+  async openDestination(id) {
+    if (conversationIdFromUrl(`${ORIGIN}/c/${id}`) !== id)
+      throw new Error("Invalid destination conversation ID.");
+    const target = await this.tab("target");
+    await this.api.tabs.create({
+      windowId: target.windowId,
+      url: `${ORIGIN}/c/${id}`,
+      active: true,
     });
+    await this.api.windows.update(target.windowId, { focused: true });
+  }
+
+  async execute(tabId, func, args = []) {
+    const results = await this.api.scripting.executeScript({
+      target: { tabId },
+      func,
+      args,
+    });
+    const result = results[0]?.result;
     if (!result)
       throw new Error(
-        `Finish signing in to the ${role} browser, then check the accounts again.`,
+        "ChatGPT did not return a browser result. Inspect its tab before retrying.",
       );
+    if (result.error) throw new Error(result.error);
     return result;
   }
 
+  async identity(role) {
+    const tab = await this.tab(role);
+    const result = await this.execute(tab.id, browserRequest, [
+      { identity: true },
+    ]);
+    if (!result.user)
+      throw loginError(
+        "SIGN_IN_REQUIRED",
+        `Finish signing in to the ${role} ChatGPT account, then check accounts.`,
+      );
+    return result.user;
+  }
+
   async request(role, endpoint, { method = "GET", body } = {}) {
-    const result = await this.page(role).evaluate(
-      async ({ endpoint, method, body }) => {
-        const sessionResponse = await fetch("/api/auth/session", {
-          credentials: "include",
-          signal: AbortSignal.timeout(30000),
-        });
-        const session = await sessionResponse.json();
-        if (!session.accessToken) return { status: 401 };
-        const response = await fetch(endpoint, {
-          method,
-          credentials: "include",
-          signal: AbortSignal.timeout(30000),
-          headers: {
-            authorization: `Bearer ${session.accessToken}`,
-            "content-type": "application/json",
-          },
-          ...(body ? { body: JSON.stringify(body) } : {}),
-        });
-        let data;
-        try {
-          data = await response.json();
-        } catch {
-          return { status: response.status, malformed: true };
-        }
-        return { status: response.status, data };
-      },
+    const tab = await this.tab(role);
+    const result = await this.execute(tab.id, browserRequest, [
       { endpoint, method, body },
-    );
+    ]);
     if (result.status === 429)
       throw new Error(
         "ChatGPT is rate-limiting requests. Pause and try again later.",
       );
     if ([401, 403].includes(result.status))
-      throw new Error(
+      throw loginError(
+        "SIGN_IN_REQUIRED",
         "ChatGPT requires a fresh login or a manual browser check.",
       );
-    if (result.status < 200 || result.status >= 300 || result.malformed) {
+    if (result.status < 200 || result.status >= 300 || result.malformed)
       throw new Error(
         `ChatGPT returned HTTP ${result.status} or an unsupported response. No result was accepted.`,
       );
-    }
     return result.data;
   }
 
@@ -257,44 +282,38 @@ export class ChatGPT {
   }
 
   async claim(job, saveTarget) {
-    const context = this.sessions.target?.context;
-    if (!context) throw new Error("Open the target browser first.");
-    const page = await context.newPage();
-    // Keep the page open on failure so a human can resolve login/captcha/loading.
-    await page.goto(job.shareUrl, {
-      waitUntil: "domcontentloaded",
-      timeout: 60000,
+    const destination = await this.tab("target");
+    const tab = await this.api.tabs.create({
+      windowId: destination.windowId,
+      url: job.shareUrl,
+      active: false,
     });
-    const continueButton = page.getByRole("button", {
-      name: /^(continue this conversation|continue conversation|continue chat|继续此对话|继续对话)$/i,
-    });
-    const composer = page.locator("#prompt-textarea");
-    await Promise.race([
-      composer.waitFor({ state: "visible", timeout: 30000 }),
-      continueButton.waitFor({ state: "visible", timeout: 30000 }),
-    ]);
-    if (await continueButton.isVisible()) await continueButton.click();
-    await composer.waitFor({ state: "visible", timeout: 30000 });
-    const earlyId = conversationIdFromUrl(page.url());
+    this.receiving.set(job.id, tab.id);
+    // Failed receiving tabs stay open for manual inspection. A send is never retried here.
+    const deadline = Date.now() + 60000;
+    while ((await this.api.tabs.get(tab.id)).status !== "complete") {
+      if (Date.now() > deadline)
+        throw new Error("The shared conversation did not finish loading.");
+      await delay(200);
+    }
+    const prepared = await this.execute(tab.id, prepareComposer);
+    const earlyId = conversationIdFromUrl(prepared.url);
     if (earlyId && earlyId !== job.sourceId) await saveTarget(earlyId);
-    await composer.fill(job.marker);
-    const send = page.locator(
-      '[data-testid="send-button"], button[aria-label="Send prompt"], button[aria-label="发送提示"]',
-    );
-    if (await send.isVisible()) await send.click();
-    else await composer.press("Enter");
-    await page.waitForURL((url) => Boolean(conversationIdFromUrl(url.href)), {
-      timeout: 45000,
-    });
-    const targetId = conversationIdFromUrl(page.url());
-    if (!targetId || targetId === job.sourceId)
-      throw new Error(
-        "ChatGPT did not create a distinct destination conversation.",
-      );
-    await saveTarget(targetId);
-    // A new URL is only a candidate. The runner verifies server persistence next.
-    await page.close();
-    return targetId;
+    await this.execute(tab.id, sendMarker, [job.marker]);
+    const receiptDeadline = Date.now() + 45000;
+    for (;;) {
+      const current = await this.api.tabs.get(tab.id);
+      const targetId = conversationIdFromUrl(current.url);
+      if (targetId && targetId !== job.sourceId) {
+        await saveTarget(targetId);
+        return targetId;
+      }
+      if (Date.now() > receiptDeadline)
+        throw new Error(
+          "ChatGPT did not create a distinct destination conversation. Inspect its tab before resending.",
+        );
+      await delay(200);
+    }
   }
 
   async verify(job) {
@@ -305,7 +324,7 @@ export class ChatGPT {
       };
     const history = await this.list("target");
     const target = await this.conversation("target", job.targetId);
-    return verifyCopy({
+    const proof = await verifyCopy({
       snapshot: job.snapshot,
       sourceId: job.sourceId,
       targetId: job.targetId,
@@ -313,12 +332,16 @@ export class ChatGPT {
       inHistory: history.some((item) => item.id === job.targetId),
       marker: job.marker,
     });
+    if (proof.verified && this.receiving.has(job.id)) {
+      await this.api.tabs.remove(this.receiving.get(job.id)).catch(() => {});
+      this.receiving.delete(job.id);
+    }
+    return proof;
   }
 
   async recover(job) {
     if (job.targetId) return job.targetId;
     const history = await this.list("target");
-    // Search conversations created since this attempt, including differently titled copies.
     for (const item of history) {
       const value = item.update_time || item.create_time;
       const updated =
@@ -337,11 +360,5 @@ export class ChatGPT {
         return item.id;
     }
     return null;
-  }
-
-  async close() {
-    await Promise.all(
-      Object.values(this.sessions).map(({ context }) => context.close()),
-    );
   }
 }

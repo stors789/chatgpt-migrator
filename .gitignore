@@ -1,5 +1,6 @@
 node_modules/
 .chatport/
+/config/
 .impeccable/review/
 .impeccable/mocks/
 .impeccable/build/
@@ -12,3 +13,5 @@ coverage/
 *.curl
 playwright-report/
 *.tgz
+/dist/
+chatport-extension-*.zip

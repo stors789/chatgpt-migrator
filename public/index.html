@@ -8,15 +8,15 @@
       content="Select, migrate, and verify ChatGPT conversations between your personal accounts."
     />
     <title>ChatPort — ChatGPT conversation migration</title>
-    <link rel="stylesheet" href="/style.css" />
-    <script type="module" src="/app.js"></script>
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="app.js"></script>
   </head>
   <body>
     <a class="skip" href="#conversations" data-t="skip"
       >Skip to conversations</a
     >
     <header class="topbar">
-      <a class="brand" href="/" aria-label="ChatPort home"
+      <a class="brand" href="index.html" aria-label="ChatPort home"
         ><svg viewBox="0 0 32 32" aria-hidden="true">
           <path d="M5 9h18m-5-5 5 5-5 5M27 23H9m5-5-5 5 5 5" /></svg
         >ChatPort</a
@@ -46,7 +46,7 @@
             >From · source account</span
           ><strong id="source-email" data-t="notConnected">Not connected</strong
           ><button class="outline" data-open="source" data-t="openSource">
-            Open source browser
+            Open source · regular window
           </button>
         </div>
         <svg class="account-arrow" viewBox="0 0 32 32" aria-hidden="true">
@@ -57,16 +57,23 @@
             >To · destination account</span
           ><strong id="target-email" data-t="notConnected">Not connected</strong
           ><button class="outline" data-open="target" data-t="openTarget">
-            Open destination browser
+            Open destination · incognito
           </button>
         </div>
         <div class="account-help">
           <p data-t="loginHelp">
-            Sign in to a different personal account in each window, then check
-            the accounts.
+            Sign in to the source in a regular window and the destination in
+            incognito. Keep both open, then check accounts.
           </p>
           <button id="check-accounts" data-t="checkAccounts">
             Check accounts
+          </button>
+          <button
+            id="extension-settings"
+            class="quiet"
+            data-t="extensionSettings"
+          >
+            Incognito access settings
           </button>
         </div>
       </section>
@@ -225,7 +232,7 @@
               with the original text in order and the receipt message intact.
             </p>
           </div>
-          <a id="export" href="/api/report" download data-t="export"
+          <a id="export" href="#" download data-t="export"
             >Download migration receipts</a
           >
         </aside>

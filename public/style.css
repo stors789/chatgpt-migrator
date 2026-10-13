@@ -1,6 +1,6 @@
 @font-face {
   font-family: DM Sans;
-  src: url("/fonts/dm-sans.woff2") format("woff2");
+  src: url("fonts/dm-sans.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -706,6 +706,15 @@ pre {
 .receipt > p {
   margin-bottom: 12px;
 }
+.receipt .text-link {
+  color: var(--green);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .receipt .error {
   padding: 12px;
   border-radius: 6px;
@@ -794,6 +803,14 @@ footer {
   }
   .accounts {
     gap: 16px;
+  }
+  .account-help {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    justify-items: start;
+  }
+  .account-help p {
+    grid-column: 1 / -1;
   }
   .account strong {
     font-size: 15px;

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { ChatGPT } from "../src/chatgpt.js";
 
 test("catalog pagination includes the page beyond 100, archived chats and named project chats", async () => {
-  const api = new ChatGPT("/unused-test-directory");
+  const api = new ChatGPT();
   const regular = Array.from({ length: 101 }, (_, i) => ({
     id: `chat-${i}`,
     title: `Chat ${i}`,
@@ -46,12 +46,12 @@ test("catalog pagination includes the page beyond 100, archived chats and named 
   );
 });
 test("repeated catalog pages are rejected even when the repeated page would satisfy total", async () => {
-  const api = new ChatGPT("/unused-test-directory");
+  const api = new ChatGPT();
   api.request = async () => ({ items: [{ id: "repeated" }], total: 2 });
   await assert.rejects(api.list("source"), /repeated catalog entries/);
 });
 test("repeated project cursors fail instead of silently truncating", async () => {
-  const api = new ChatGPT("/unused-test-directory");
+  const api = new ChatGPT();
   api.request = async (_, endpoint) =>
     endpoint.includes("/conversations?")
       ? { items: [], total: 0 }
