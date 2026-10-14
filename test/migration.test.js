@@ -193,6 +193,8 @@ test("old loading and composer failures remain recoverable after upgrading", asy
   const errors = [
     "The shared conversation did not finish loading.",
     "The shared chat has no editable composer. Inspect the destination tab.",
+    "The destination editor already contains text. Inspect it before continuing.",
+    "The receipt message could not be entered exactly. No message was sent.",
     "The previous run stopped during receipt. Check the destination before sending again.",
   ];
   await storage.set({
@@ -205,7 +207,7 @@ test("old loading and composer failures remain recoverable after upgrading", asy
   await restored.load();
   assert.deepEqual(
     restored.jobs.map((job) => job.sendAttempted),
-    [false, false, undefined],
+    [false, false, false, false, undefined],
   );
 });
 

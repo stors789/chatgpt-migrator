@@ -14,13 +14,15 @@ export class Store {
       this.jobs = progress.jobs;
     }
     for (const job of this.jobs) {
-      // These released errors occurred before sendMarker was called. Preserve
+      // These released errors occurred before the send control was clicked. Preserve
       // that fact when upgrading so the user's stopped receipts can resume.
       if (
         job.sendAttempted === undefined &&
         [
           "The shared conversation did not finish loading.",
           "The shared chat has no editable composer. Inspect the destination tab.",
+          "The destination editor already contains text. Inspect it before continuing.",
+          "The receipt message could not be entered exactly. No message was sent.",
           "ChatGPT has multiple editable message boxes. Inspect the destination tab before sending.",
         ].includes(job.error)
       ) {

@@ -12,7 +12,7 @@ _截图使用虚构数据。这是社区工具，与 OpenAI 无隶属关系。_
 
 ## 安装
 
-1. 从 [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest) 下载 `chatport-extension-v0.2.3.zip`，解压到准备长期保留的文件夹。
+1. 从 [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest) 下载 `chatport-extension-v0.2.4.zip`，解压到准备长期保留的文件夹。
 2. 在 Chrome 打开 `chrome://extensions`，开启右上角「开发者模式」，点击「加载已解压的扩展程序」，选中包含 `manifest.json` 的解压文件夹。
 3. 进入 ChatPort 的「详情」，开启「允许在无痕模式下运行」。扩展需要用它访问新账号，同时保持两个账号的登录相互隔离。
 4. 在 Chrome 的扩展菜单中固定 ChatPort，点击扩展图标即可打开工作台。
@@ -75,7 +75,7 @@ npm run test:e2e
 
 构建后加载 `dist/` 文件夹。运行代码使用浏览器原生接口，Playwright 仅用于开发测试。
 
-自动测试在 Chromium 中加载真正的 Manifest V3 扩展，通过普通／无痕窗口和**虚构的 ChatGPT 接口响应**验证完整流程。测试不登录真实账号；真实双账号兼容性仍需人工试迁移，不能把自动测试通过当成网页私有接口永远兼容的保证。
+自动测试在 Chromium 中加载真正的 Manifest V3 扩展，通过普通／无痕窗口和**虚构的 ChatGPT 接口响应**验证完整流程。输入框回归测试还使用真正的 ProseMirror 编辑器，从编辑器文档模型核对提交的消息，覆盖段落换行、空行和已有迁移草稿。测试不登录真实账号；真实双账号兼容性仍需人工试迁移，不能把自动测试通过当成网页私有接口永远兼容的保证。
 
 旧的 Node／Playwright 版本保留在 `v0.1.0` Git 标签中。0.2 不读取旧的 `~/.chatport` 目录；凭证格式与 SHA-256 核验规则保持一致。
 

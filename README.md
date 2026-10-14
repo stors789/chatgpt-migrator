@@ -12,7 +12,7 @@ _The screenshot uses synthetic accounts and conversations. This is an unofficial
 
 ## Install
 
-1. Download `chatport-extension-v0.2.3.zip` from [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest), then unzip it into a permanent folder.
+1. Download `chatport-extension-v0.2.4.zip` from [Releases](https://github.com/stors789/chatgpt-migrator/releases/latest), then unzip it into a permanent folder.
 2. Open `chrome://extensions` in Chrome, enable **Developer mode**, click **Load unpacked**, and select the unzipped folder containing `manifest.json`.
 3. Open ChatPort's **Details** and enable **Allow in incognito**. This lets the extension operate the destination account while keeping its login session separate.
 4. Pin ChatPort in Chrome's extension menu and click its icon to open the workspace.
@@ -75,7 +75,7 @@ npm run test:e2e
 
 Load the generated `dist/` folder as the extension. Runtime code uses platform APIs; Playwright is a development-only test dependency.
 
-Unit tests cover strict verification, account changes, pause, concurrency and interrupted attempts. Browser tests load the actual Manifest V3 extension in Chromium and use **synthetic ChatGPT responses** in real regular/incognito contexts. They do not log into real accounts or establish future compatibility with ChatGPT's unofficial web APIs. A real two-account smoke test is still required before migrating important chats.
+Unit tests cover strict verification, account changes, pause, concurrency and interrupted attempts. Browser tests load the actual Manifest V3 extension in Chromium and use **synthetic ChatGPT responses** in real regular/incognito contexts. Composer regressions also use a real ProseMirror editor and verify the message from its document model, including paragraph boundaries, blank lines and existing receipt drafts. They do not log into real accounts or establish future compatibility with ChatGPT's unofficial web APIs. A real two-account smoke test is still required before migrating important chats.
 
 The older Node/Playwright implementation is preserved in the `v0.1.0` Git tag. Version 0.2 does not read its `~/.chatport` directory. The receipt format and SHA-256 verification rules are retained.
 

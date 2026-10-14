@@ -12,6 +12,19 @@ export async function fixture({
   composer = "legacy",
   slowResource = false,
 } = {}) {
+  const editorModules = new Map();
+  if (composer === "prosemirror")
+    for (const name of [
+      "orderedmap",
+      "prosemirror-model",
+      "prosemirror-transform",
+      "prosemirror-state",
+      "prosemirror-view",
+    ])
+      editorModules.set(
+        `/test-vendor/${name}.js`,
+        await readFile(new URL(import.meta.resolve(name)), "utf8"),
+      );
   const directory = await mkdtemp(path.join(tmpdir(), "chatport-extension-"));
   const key = path.join(directory, "key.pem");
   const cert = path.join(directory, "cert.pem");
@@ -74,6 +87,13 @@ export async function fixture({
         return;
       }
       const url = new URL(request.url, "https://chatgpt.com");
+      if (editorModules.has(url.pathname)) {
+        response.writeHead(200, {
+          "content-type": "text/javascript; charset=utf-8",
+        });
+        response.end(editorModules.get(url.pathname));
+        return;
+      }
       let role = request.headers.cookie?.match(
         /chatport_fixture=(source|target)/,
       )?.[1];
@@ -214,14 +234,46 @@ export async function fixture({
         const targetId = url.pathname.startsWith("/c/") ? shareId : null;
         if (!targetId) shareVisits++;
         const editor =
-          composer === "current"
-            ? '<form><div contenteditable="true" role="textbox" aria-label="询问 ChatGPT"></div><button type="button" aria-label="添加文件等内容">Add file</button><button type="submit" aria-label="发送">Send</button></form>'
-            : '<div id="prompt-textarea" contenteditable="true" role="textbox"></div><button data-testid="send-button" aria-label="Send prompt">Send</button>';
+          composer === "prosemirror"
+            ? '<form><div id="editor-mount"></div><button type="submit" aria-label="发送" disabled>Send</button></form>'
+            : composer === "current"
+              ? '<form><div contenteditable="true" role="textbox" aria-label="询问 ChatGPT"></div><button type="button" aria-label="添加文件等内容">Add file</button><button type="submit" aria-label="发送">Send</button></form>'
+              : '<div id="prompt-textarea" contenteditable="true" role="textbox"></div><button data-testid="send-button" aria-label="Send prompt">Send</button>';
         const otherForm =
           '<form id="unrelated"><div contenteditable="true" role="textbox" aria-label="Hidden search" style="display:none"></div><button type="submit">Search</button></form>';
-        return html(`<!doctype html><html><body><p>Synthetic shared conversation</p>${slowResource ? '<img src="/slow-image" alt="" width="1" height="1">' : ""}${otherForm}${editor}<script>
+        const importMap = JSON.stringify({
+          imports: Object.fromEntries(
+            [...editorModules.keys()].map((route) => [
+              path.basename(route, ".js"),
+              route,
+            ]),
+          ),
+        });
+        const bootstrap =
+          composer === "prosemirror"
+            ? `
+          import {Schema} from "prosemirror-model";
+          import {EditorState} from "prosemirror-state";
+          import {EditorView} from "prosemirror-view";
+          const schema = new Schema({nodes:{
+            doc:{content:"paragraph+"},
+            paragraph:{group:"block",content:"inline*",parseDOM:[{tag:"p"}],toDOM:()=>["p",0]},
+            text:{group:"inline"},
+            hard_break:{inline:true,group:"inline",selectable:false,parseDOM:[{tag:"br"}],toDOM:()=>["br"]}
+          }});
+          const view = new EditorView(document.querySelector("#editor-mount"), {
+            state: EditorState.create({schema}),
+            attributes: {role:"textbox","aria-label":"询问 ChatGPT"},
+            dispatchTransaction(transaction) {
+              this.updateState(this.state.apply(transaction));
+              this.dom.closest("form").querySelector("button[type=submit]").disabled = !this.state.doc.textBetween(0,this.state.doc.content.size,"\\n","\\n").trim();
+            }
+          });`
+            : "";
+        return html(`<!doctype html><html><body><p>Synthetic shared conversation</p>${slowResource ? '<img src="/slow-image" alt="" width="1" height="1">' : ""}${otherForm}${editor}${composer === "prosemirror" ? `<script type="importmap">${importMap}</script>` : ""}<script ${composer === "prosemirror" ? 'type="module"' : ""}>
+        ${bootstrap}
         const box = document.querySelector('[aria-label="询问 ChatGPT"], #prompt-textarea');
-        const submit = async (event) => {event.preventDefault(); const response=await fetch('/backend-api/conversation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({shareId:${JSON.stringify(shareId)},targetId:${JSON.stringify(targetId)},message:box.innerText,readyState:document.readyState})}); const data=await response.json(); history.replaceState({},'', '/c/'+data.id);};
+        const submit = async (event) => {event.preventDefault(); const message = ${composer === "prosemirror" ? 'view.state.doc.textBetween(0,view.state.doc.content.size,"\\n","\\n")' : "box.innerText"}; const response=await fetch('/backend-api/conversation',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({shareId:${JSON.stringify(shareId)},targetId:${JSON.stringify(targetId)},message,readyState:document.readyState})}); const data=await response.json(); history.replaceState({},'', '/c/'+data.id);};
         if(box.closest('form')) box.closest('form').onsubmit=submit;
         else document.querySelector('[data-testid="send-button"]').onclick=submit;
         document.querySelector('#unrelated').onsubmit=(event)=>{event.preventDefault();document.body.dataset.wrongSubmit='true';};

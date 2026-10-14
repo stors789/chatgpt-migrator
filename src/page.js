@@ -92,7 +92,29 @@ export async function sendMarker(marker, selector, expectedUrl) {
       sent: false,
     };
   const composer = editors[0];
-  const text = composer.innerText.replace(/\r\n/g, "\n").trimEnd();
+  // ProseMirror stores logical lines as paragraphs. innerText adds visual
+  // paragraph spacing, which is not part of the message submitted by the editor.
+  const nodeText = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    if (node.nodeName === "BR")
+      return node.classList.contains("ProseMirror-trailingBreak") ||
+        (node.parentElement.matches("p, div") &&
+          node.parentElement.childNodes.length === 1)
+        ? ""
+        : "\n";
+    const children = [...node.childNodes];
+    const isBlock = (child) => ["P", "DIV"].includes(child?.nodeName);
+    return children
+      .map(
+        (child, index) =>
+          (index && (isBlock(child) || isBlock(children[index - 1]))
+            ? "\n"
+            : "") + nodeText(child),
+      )
+      .join("");
+  };
+  const readText = () => nodeText(composer).replace(/\r\n/g, "\n").trimEnd();
+  const text = readText();
   if (text.trim() && text !== marker.trimEnd())
     return {
       error:
@@ -102,7 +124,7 @@ export async function sendMarker(marker, selector, expectedUrl) {
   composer.focus();
   if (
     (!text.trim() && !document.execCommand("insertText", false, marker)) ||
-    composer.innerText.replace(/\r\n/g, "\n").trimEnd() !== marker.trimEnd()
+    readText() !== marker.trimEnd()
   )
     return {
       error:
@@ -118,7 +140,7 @@ export async function sendMarker(marker, selector, expectedUrl) {
       (expectedUrl && location.href !== expectedUrl) ||
       currentEditors.length !== 1 ||
       currentEditors[0] !== composer ||
-      composer.innerText.replace(/\r\n/g, "\n").trimEnd() !== marker.trimEnd()
+      readText() !== marker.trimEnd()
     )
       return {
         error:

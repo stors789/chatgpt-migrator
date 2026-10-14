@@ -623,3 +623,143 @@ test("editing a receipt draft while the send button is disabled stops without ov
   assert.equal(app.sent, 0);
   assert.equal((await app.jobs())[0].sendAttempted, false);
 });
+
+test("a real ProseMirror editor receives the exact multiline marker including empty paragraphs", async (t) => {
+  const app = await fixture({ composer: "prosemirror" });
+  t.after(() => app.close());
+  const page = await pageFor(app);
+  await page
+    .getByRole("checkbox", { name: "A weekend in Kyoto", exact: true })
+    .check();
+  await page
+    .locator("#message")
+    .fill("Keep both paragraphs.\n\n第二段，保留换行。");
+  await page.locator("#sharing-confirm").check();
+  await page.locator("#start").click();
+  await until(
+    async () =>
+      ["verified", "failed", "needs-review"].includes(
+        (await app.jobs())[0]?.status,
+      ),
+    20000,
+  );
+  const job = (await app.jobs())[0];
+  let editor;
+  if (job.status !== "verified")
+    editor = await page.evaluate(
+      async (tabId) =>
+        chrome.scripting.executeScript({
+          target: { tabId },
+          func: () => {
+            const box = document.querySelector('[aria-label="询问 ChatGPT"]');
+            return { innerText: box.innerText, html: box.innerHTML };
+          },
+        }),
+      job.receivingTabId,
+    );
+  assert.equal(
+    job.status,
+    "verified",
+    JSON.stringify({ error: job.error, editor }),
+  );
+  assert.equal(app.sent, 1);
+  const copy = app.target.get(job.targetId);
+  const messages = Object.values(copy.mapping).filter(
+    (node) => node.message?.author.role === "user",
+  );
+  assert.equal(messages.at(-1).message.content.parts[0], job.marker);
+});
+
+async function insertRichDraft(page, tabId, text, hardBreaks = false) {
+  await page.evaluate(
+    async ({ tabId, text, hardBreaks }) =>
+      chrome.scripting.executeScript({
+        target: { tabId },
+        func: ({ text, hardBreaks }) => {
+          const box = document.querySelector('[aria-label="询问 ChatGPT"]');
+          box.focus();
+          if (!hardBreaks)
+            return document.execCommand("insertText", false, text);
+          const paragraph = document.createElement("p");
+          const span = paragraph.appendChild(document.createElement("span"));
+          span.setAttribute("data-prompt-literal-paste", "");
+          for (const [index, line] of text.split("\n").entries()) {
+            if (index) span.appendChild(document.createElement("br"));
+            span.appendChild(document.createTextNode(line));
+          }
+          return document.execCommand("insertHTML", false, paragraph.outerHTML);
+        },
+        args: [{ text, hardBreaks }],
+      }),
+    { tabId, text, hardBreaks },
+  );
+}
+
+test("retry accepts the same receipt already in ProseMirror paragraphs or pasted hard breaks", async (t) => {
+  for (const hardBreaks of [false, true]) {
+    const app = await fixture({ composer: "prosemirror" });
+    try {
+      const page = await pageFor(app);
+      const job = await stoppedJob(
+        app,
+        "The receipt message could not be entered exactly. No message was sent.",
+      );
+      const tabId = await openReceiving(page, job.shareUrl);
+      await insertRichDraft(page, tabId, job.marker, hardBreaks);
+      await restoreJobs(page, [job]);
+      await page.locator(`[data-receipt="${job.id}"]`).click();
+      await page
+        .getByRole("button", { name: "Retry this conversation", exact: true })
+        .click();
+      await until(
+        async () => (await app.jobs())[0]?.status === "verified",
+        20000,
+      );
+      assert.equal(app.sent, 1);
+      assert.equal(app.shareVisits, 1);
+      assert.equal((await app.jobs())[0].marker, job.marker);
+    } finally {
+      await app.close();
+    }
+  }
+});
+
+test("a ProseMirror draft with an extra real blank line is preserved and refused", async (t) => {
+  const app = await fixture({ composer: "prosemirror" });
+  t.after(() => app.close());
+  const page = await pageFor(app);
+  const job = await stoppedJob(
+    app,
+    "The destination editor already contains text. Inspect it before continuing.",
+  );
+  const tabId = await openReceiving(page, job.shareUrl);
+  const changed = job.marker.replace("\n", "\n\n");
+  await insertRichDraft(page, tabId, changed);
+  const before = await page.evaluate(
+    async (tabId) =>
+      chrome.scripting.executeScript({
+        target: { tabId },
+        func: () =>
+          document.querySelector('[aria-label="询问 ChatGPT"]').innerHTML,
+      }),
+    tabId,
+  );
+  await restoreJobs(page, [job]);
+  await page.locator(`[data-receipt="${job.id}"]`).click();
+  await page
+    .getByRole("button", { name: "Retry this conversation", exact: true })
+    .click();
+  await until(async () => (await app.jobs())[0]?.status === "failed");
+  assert.equal(app.sent, 0);
+  assert.equal((await app.jobs())[0].sendAttempted, false);
+  const after = await page.evaluate(
+    async (tabId) =>
+      chrome.scripting.executeScript({
+        target: { tabId },
+        func: () =>
+          document.querySelector('[aria-label="询问 ChatGPT"]').innerHTML,
+      }),
+    tabId,
+  );
+  assert.equal(after[0].result, before[0].result);
+});

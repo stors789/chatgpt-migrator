@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.4 — 2026-10-14
+
+Fix the two receiving errors reported with a visible ChatPort draft: “The receipt message could not be entered exactly” and “The destination editor already contains text.” ChatGPT's ProseMirror editor stores logical lines as paragraphs, while `innerText` adds visual paragraph spacing. Read paragraph and hard-break text directly from the DOM for receipt comparisons, retaining real blank lines and the exact marker. Existing matching drafts can be continued without clearing or rewriting them; different drafts remain untouched.
+
+Recognize these two explicit pre-send errors in older receipts so they remain retryable after updating. Catalog loading and saved-copy verification are unchanged.
+
+Validation: reproduced the original failure using a real ProseMirror editor before applying the fix. 52 unit tests and 15 actual-extension synthetic browser workflows pass, including native multiline insertion, existing paragraph/pasted drafts, and refusal of a genuinely different blank line. ProseMirror packages are test-only dependencies. Inspected the real ChatGPT editor's empty paragraph structure and filled/cleared a synthetic draft without sending; a real-account migration is still unverified.
+
 ## 0.2.3 — 2026-10-14
 
 Fix receiving that waited for the whole Chrome tab to finish loading even when the shared conversation's editor was usable. Inject the editor check immediately after navigation commits and let editor readiness control receiving. Conversation catalog loading is unchanged.
